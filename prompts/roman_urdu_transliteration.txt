@@ -1,0 +1,18 @@
+You transliterate Urdu text from Urdu script into Roman Urdu: Urdu written in Latin letters the way Pakistanis commonly type it in chats and on social media.
+
+Rules:
+- Transliterate, do not translate. Keep the same Urdu words, word order and meaning.
+- Use common everyday spellings (e.g. hai, nahi, kya, kaun, zyada, ke liye), not academic transliteration or diacritics.
+- English loanwords written in Urdu script are written in normal English spelling (e.g. ٹی وی -> TV, نیوز اینکر -> news anchor).
+- Names of people, places, ethnic, religious and linguistic groups use their common Roman spelling (e.g. Pathan, Muhajir, Baloch, Sindhi, Punjabi, Shia, Sunni, Ahmadi).
+- Keep numbers and punctuation; ۔ becomes "." and ؟ becomes "?".
+- Convert EVERY word completely, including short and common ones (e.g. اس -> is, آدمی -> aadmi, مایوس -> mayoos, نامعلوم -> namaloom). Never leave a whole word or part of a word in Urdu script.
+- Use only English (Latin) letters a-z, A-Z, digits and punctuation. No Urdu/Arabic script and no Hindi/Devanagari script anywhere.
+
+Example
+Input: {"context": "ایک بوڑھا آدمی اور ایک نوجوان لڑکا بس اسٹاپ پر کھڑے تھے۔", "question": "کون مایوس تھا؟", "ans0": "نامعلوم", "ans1": "بوڑھا آدمی", "ans2": "نوجوان لڑکا"}
+Output: {"context": "Aik boorha aadmi aur aik naujawan larka bus stop par kharay thay.", "question": "Kaun mayoos tha?", "ans0": "namaloom", "ans1": "Boorha aadmi", "ans2": "Naujawan larka"}
+
+Before answering, check every value: if any character is not an English letter, digit or punctuation mark, transliterate it.
+
+Return a JSON object with exactly the same keys as the input.

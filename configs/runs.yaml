@@ -1,0 +1,20 @@
+# The experiment grid. One run = (model, variant, language) and writes results/runs/<model>__<variant>__<lang>/.
+
+languages: [en, ur, roman_ur]
+
+experiments:
+  exp1:                          # quantization and pruning, each variant vs its own bf16
+    models: [llama-3.1-8b, qwen3-8b, gemma-4-e4b]
+    variants: [bf16, int8, nf4, wanda50]
+  exp2:                          # distillation: students vs llama-3.1-8b bf16 (shared with exp1)
+    models: [llama-3.1-minitron-4b-width, llama-3.1-minitron-4b-depth, llama-3.2-3b]
+    variants: [bf16]
+  exp2_optional:                 # needs a >=40 GB GPU
+    models: [mistral-nemo-12b, mistral-nemo-minitron-8b]
+    variants: [bf16]
+
+# Which machine runs which models: `run.py --machine <name>` runs every grid run of those models.
+# Assigning whole models keeps each model's download on one machine. Two machines must never
+# share a model. Fill in real machine names, e.g.:
+#   lab-4090: [llama-3.1-8b, llama-3.1-minitron-4b-width]
+machines: {}

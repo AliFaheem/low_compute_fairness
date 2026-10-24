@@ -1,0 +1,23 @@
+[project]
+name = "low-compute-fairness"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "accelerate>=1.0",
+    "bitsandbytes>=0.45 ; sys_platform == 'linux'",
+    "google-auth[requests]>=2.0",
+    "huggingface-hub>=0.34",
+    "pyyaml>=6.0",
+    "torch>=2.6",
+    "transformers>=5.10",
+]
+
+# Linux GPUs use the CUDA 12.6 build of torch: it runs on NVIDIA drivers >= 525, while the
+# default PyPI build (CUDA 13) needs >= 580. macOS uses the normal CPU/MPS build.
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux'" }]

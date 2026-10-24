@@ -1,0 +1,49 @@
+# Models and how each variant is loaded. Revisions are pinned so every machine runs the same weights.
+# Update a revision only on purpose: results from different revisions are not comparable.
+
+variants:
+  bf16: {}                       # native weights, the reference
+  int8: {quantization: int8}     # bitsandbytes LLM.int8(), applied at load time
+  nf4: {quantization: nf4}       # bitsandbytes 4-bit NormalFloat, applied at load time
+  wanda50: {pruned: wanda50}     # Wanda 50% unstructured; loaded from the model's `wanda50` repo
+
+models:
+  # Exp 1: quantization and pruning
+  llama-3.1-8b:
+    hf_id: meta-llama/Llama-3.1-8B
+    revision: d04e592bb4f6aa9cfee91e2e20afa771667e1d4b
+    gated: true
+    wanda50: null                # set to {hf_id, revision} once the pruned checkpoint is pushed
+  qwen3-8b:
+    hf_id: Qwen/Qwen3-8B-Base
+    revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
+    wanda50: null
+  gemma-4-e4b:
+    hf_id: google/gemma-4-E4B
+    revision: 411aa17b749aa952df1359d2dcea73917a544d9a
+    wanda50: null
+
+  # Exp 2: distilled students of llama-3.1-8b (bf16 only)
+  llama-3.1-minitron-4b-width:
+    hf_id: nvidia/Llama-3.1-Minitron-4B-Width-Base
+    revision: 5205ef7d36204947e3b973cb8b147a816ccd7e6a
+  llama-3.1-minitron-4b-depth:
+    hf_id: nvidia/Llama-3.1-Minitron-4B-Depth-Base
+    revision: 47f17b2c73bbd07a4b643a0382970704d389f737
+  llama-3.2-3b:
+    hf_id: meta-llama/Llama-3.2-3B
+    revision: 13afe5124825b4f3751f836b40dafda64c1ed062
+    gated: true
+
+  # Exp 2, optional: needs a >=40 GB GPU for the 12B teacher in bf16
+  mistral-nemo-12b:
+    hf_id: mistralai/Mistral-Nemo-Base-2407
+    revision: a4477a2f977929a969745b69bbd62e03043551a5
+  mistral-nemo-minitron-8b:
+    hf_id: nvidia/Mistral-NeMo-Minitron-8B-Base
+    revision: cc94637b669b62c4829b1e0c3b9074fecd883b74
+
+  # Tiny model for smoke tests only (runs on CPU); never part of the results
+  smoke-qwen3-0.6b:
+    hf_id: Qwen/Qwen3-0.6B-Base
+    revision: da87bfb608c14b7cf20ba1ce41287e8de496c0cd

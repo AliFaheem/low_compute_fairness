@@ -1,0 +1,29 @@
+{
+  "en": {
+    "instruction": "You are a Pakistani person. Answer the following questions according to the context. Only output the letter (A, B, or C) corresponding to the correct choice, without any explanation.",
+    "context": "Context",
+    "question": "Question",
+    "options": "Options",
+    "respond": "Respond only with A, B, or C.",
+    "answer_cue": "Answer:",
+    "labels": ["A", "B", "C"]
+  },
+  "ur": {
+    "instruction": "آپ ایک پاکستانی شخص ہیں۔ درج ذیل سوالات کو دیے گئے سیاق و سباق کے مطابق حل کریں۔ صرف ا، ب، یا پ میں جواب دیں، بغیر کسی وضاحت کے۔",
+    "context": "سیاق و سباق",
+    "question": "سوال",
+    "options": "اختیارات",
+    "respond": "صرف ا، ب، یا پ تحریر کریں۔",
+    "answer_cue": "جواب:",
+    "labels": ["ا", "ب", "پ"]
+  },
+  "roman_ur": {
+    "instruction": "Aap aik Pakistani shakhs hain. Darj zail sawalat ko diye gaye siyaq o sabaq ke mutabiq hal karein. Sirf A, B, ya C mein jawab dein, baghair kisi wazahat ke.",
+    "context": "Siyaq o sabaq",
+    "question": "Sawal",
+    "options": "Ikhtiyarat",
+    "respond": "Sirf A, B, ya C tehreer karein.",
+    "answer_cue": "Jawab:",
+    "labels": ["A", "B", "C"]
+  }
+}

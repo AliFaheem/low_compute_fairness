@@ -1,0 +1,8 @@
+# Data and results live in private HF datasets (HF_DATA_REPO, HF_RESULTS_REPO), never in this public repo
+data/
+results/
+.DS_Store
+.env
+credentials.json
+.venv/
+__pycache__/
