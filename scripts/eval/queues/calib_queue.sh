@@ -5,9 +5,11 @@
 # (its original prune predates multi-language perplexity). Skips completed runs.
 #
 #   MODELS="qwen3-8b gemma-4-e4b qalb-1.0-8b" LANGS="en ur roman_ur ur_abc" bash scripts/eval/queues/calib_queue.sh
+#   MODELS=qalb-1.0-8b PPLCHECK=0 bash scripts/eval/queues/calib_queue.sh   # e.g. on a second machine
 cd /root/low_compute_fairness
 MODELS="${MODELS:-qwen3-8b gemma-4-e4b qalb-1.0-8b}"
 LANGS="${LANGS:-en ur roman_ur ur_abc}"
+PPLCHECK="${PPLCHECK:-1}"   # 0 on machines that should not run the Qwen perplexity check
 step() { echo "=== $(date "+%F %T") step: $*"; "$@"; local rc=$?; echo "=== $(date "+%F %T") step exit $rc: $*"; return $rc; }
 complete() {
   for l in $LANGS; do
@@ -26,7 +28,7 @@ for m in $MODELS; do
   fi
   step uv run python -u scripts/eval/run.py --model "$m" --variant wanda50mix --lang $LANGS && cleanup "$m-wanda50mix"
 done
-if [ ! -f logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json ]; then
+if [ "$PPLCHECK" = 1 ] && [ ! -f logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json ]; then
   step uv run python -u scripts/compression/wanda_prune.py --model qwen3-8b --sparsity 0.5 --no-save \
        --out models/qwen3-8b-wanda50-pplcheck \
     && mkdir -p logs/wanda_meta && mv models/qwen3-8b-wanda50-pplcheck/wanda_meta.json logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json \
