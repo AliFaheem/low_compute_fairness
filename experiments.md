@@ -350,6 +350,16 @@ Running record of what was run, where, what came out, and what was decided. Meas
   2. **Noise floor**: BF16 rerun of Qwen and Gemma × 4 languages with `--token-budget 8192` (original 16384), so batch composition differs. Written via new `run.py --run-suffix rerun` to `runs/<model>__bf16__<lang>__rerun`. Compare final answers with the original BF16 run for the flip-rate noise floor.
 - Commit `e8339f4`. A brief SSH timeout to Machine 1 at about 11:55 was a network blip; its jobs kept running.
 
+### 25 Oct 2026, 15:01: Alif-1.0-8B added for a smoke test
+
+- User asked for a smoke test of **Alif** (`large-traversaal/Alif-1.0-8B-Instruct`, revision `03d549f`, Apache-2.0). Like Qalb, it is an Urdu instruction-tuned Llama-3.1-8B, so it fits the language-adaptation side study.
+- The repo has **only a LoRA adapter** (r=128, alpha=32, rsLoRA, all attention/MLP projections, plus full `embed_tokens` and `lm_head`) and GGUF files, with no full safetensors. The adapter declares `unsloth/Meta-Llama-3.1-8B` as its base. Five sampled tensors were byte-identical to the cached `meta-llama/Llama-3.1-8B`, so the adapter is merged onto the cached copy (only the 3.4 GB adapter was downloaded).
+- New `scripts/model_prep/merge_lora.py` merges on CPU without peft (`W += B·A·alpha/sqrt(r)`) and writes `models/alif-1.0-8b` plus `merge_meta.json`. Ran on Machine 1 at 15:01: 224 LoRA layers merged and 2 tensors replaced.
+- New `configs/models.yaml` entry `alif-1.0-8b` (local path, with `adapter` and `base` keys).
+- Machine 1 tmux `alif` (`scripts/eval/queues/alif_pilot.sh`, log `logs/alif.log`) waits for `TIER1 DONE`, then pilots BF16 on 500 items × en/ur/roman_ur/ur_abc (about 18:00–18:30).
+- New machine: not needed for a smoke test. Reconsider if Alif (or Llama) gets a full Exp 1.
+- Commit `6382434`.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
