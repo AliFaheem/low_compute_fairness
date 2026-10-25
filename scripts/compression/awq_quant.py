@@ -67,8 +67,24 @@ def keep_gemma4_position_embeddings():
         for cls_name, cls in inspect.getmembers(mod, inspect.isclass):
             if issubclass(cls, BaseQModel) and cls.__module__ == mod.__name__:
                 cls.awq_preserve_explicit_position_embeddings = True
+                if isinstance(getattr(cls, "module_tree", None), list):
+                    cls.module_tree = drop_per_layer_adapters(cls.module_tree)
                 patched.append(cls_name)
     return patched
+
+
+GEMMA4_PER_LAYER = {"per_layer_input_gate", "post_per_layer_input_norm", "per_layer_projection"}
+
+
+def drop_per_layer_adapters(tree):
+    """Gemma 4 E-models' per-layer-embedding adapters (256-wide) break AWQ's scale application in gptqmodel 7.7
+    (`scale_ln_fcs` size mismatch 2560 vs 256). Removing them from the module tree leaves them in bf16, so AWQ
+    covers decoder attention + MLP only: what it covers in the other models, which have no such layers."""
+    if isinstance(tree, dict):
+        return {k: drop_per_layer_adapters(v) for k, v in tree.items() if k not in GEMMA4_PER_LAYER}
+    if isinstance(tree, list):
+        return [drop_per_layer_adapters(v) for v in tree]
+    return tree
 
 
 def main():
@@ -99,7 +115,7 @@ def main():
 
     patched = keep_gemma4_position_embeddings() if args.model.startswith("gemma-4") else []
     if patched:
-        print(f"Gemma 4: keeping explicit per-layer position embeddings in AWQ replay ({', '.join(patched)})", flush=True)
+        print(f"Gemma 4: explicit per-layer position embeddings kept; per-layer adapters left in bf16 ({', '.join(patched)})", flush=True)
     qc = QuantizeConfig(bits=args.bits, group_size=args.group_size, method=METHOD.AWQ, format=FORMAT.GEMM)
     t0 = time.time()
     # GPTQModel.load passes extra kwargs to the model constructor (no `revision`), so load the pinned snapshot by path.
