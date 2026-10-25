@@ -4,7 +4,11 @@ Running record of what was run, where, what came out, and what was decided. **Re
 
 ## Current state
 
-- **Phase:** 1, pilot (500-item runs per model × language), in progress.
+- **Phase:** 3 for Qwen3-8B: full Exp 1 queue running since 25 Oct 01:02 (tmux `qwen-exp1`, log `logs/qwen-exp1.log`). Pilots are done for all 3 models.
+- **Next in line:** tmux `after-qwen` (log `logs/after-qwen.log`) starts when the Qwen queue logs `QUEUE DONE`. It runs Qwen wanda75, then all Gemma variants including wanda50 and wanda75.
+- **To check progress in a new session:**
+  - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/qwen-exp1.log /root/low_compute_fairness/logs/after-qwen.log'` lists steps (Qwen-queue exit codes are unreliable, see 01:30);
+  - `uv run python scripts/eval/status.py` shows the grid.
 - **Machine:** Vast.ai instance 57582615, 1× RTX 3090 Ti 24 GB, 109 GB disk, no persistent volume (destroy wipes it; stop/start keeps it).
   - SSH: `ssh vast` (entry in `~/.ssh/config` on Ali's Mac, key `~/.ssh/vast_ed25519`, proxy `ssh4.vast.ai:10033`). Update the Port/HostName if the instance is recreated.
   - Repo at `/root/low_compute_fairness`, branch `setup/initial`. `.env` there holds only `HF_TOKEN`, `HF_DATA_REPO`, `HF_RESULTS_REPO`.
@@ -81,6 +85,50 @@ Running record of what was run, where, what came out, and what was decided. **Re
 
   Alternative: a few-shot letter prompt (keeps position bias and departs from the authors' zero-shot setup).
 - Diagnostic script used: `scratchpad/gemma_top_tokens.py`, copied to `/tmp` on Vast; not in the repo.
+
+### 25 Oct 2026, 01:02: decision and start of Qwen3-8B Exp 1 full runs (letter scoring)
+
+- Decided:
+  - Llama is skipped for `ur`/`roman_ur`;
+  - Qwen goes ahead now with the current **letter scoring**, because its label mass is ≥ 0.88 in all languages;
+  - Gemma waits for the scoring decision.
+- Caveat: if the project later switches to answer-text scoring for Gemma, Qwen must be re-scored the same way for cross-model comparability.
+- Wanda pruning script `scripts/compression/wanda_prune.py` was written in another chat and tested on CPU with Qwen3-0.6B.
+  - Pruned models are kept local in `models/` (git-ignored), not uploaded, because of bandwidth cost.
+  - `configs/models.yaml` has `qwen3-8b.wanda50 = models/qwen3-8b-wanda50`.
+  - Note: it re-runs the model from the start for each block (cost grows with depth squared), so about 2–3 h for an 8B model on the 3090 Ti, versus ~15 min for the official implementation.
+- Queue: tmux session `qwen-exp1` on Vast, script `logs/qwen_queue.sh` (on the instance only), log `logs/qwen-exp1.log`.
+  - Order: bf16 → nf4 → int8 → wanda_prune → wanda50, all with `--lang en ur roman_ur`, full 6,432 items.
+  - Each step logs `=== … step exit N`; the end logs `QUEUE DONE`.
+  - Estimated 6.5–9 h, about $1.7–2.5 GPU. Credit was $2.47 at start; asked the user to top up.
+- Code at this point: branch `setup/initial`, commit `31dca4f`.
+
+### 25 Oct 2026, 01:22: Gemma-4-E4B Exp 1 queued after Qwen (letter scoring)
+
+- User decision: run Gemma right after Qwen, also with letter scoring.
+- Caveat recorded: letter scoring undercounts Gemma's "Unknown" (it writes "Namaloom" instead of the letter). Its ambiguous-context bias scores need care; disambiguated accuracy and flips are fine. If answer-text scoring is adopted later, re-score both Qwen and Gemma.
+- tmux `gemma-exp1` runs `logs/gemma_queue.sh` (on the instance), log `logs/gemma-exp1.log`.
+  - It waits for `QUEUE DONE` in `logs/qwen-exp1.log`.
+  - Then: bf16 → nf4 → int8 → wanda_prune → wanda50, 3 languages, full 6,432 items.
+  - `configs/models.yaml`: `gemma-4-e4b.wanda50 = models/gemma-4-e4b-wanda50` (commit `aaffe76`).
+- Estimate: Gemma 4–5 h, about $1–1.3. With Qwen, total about 11–14 h, $3–4 GPU.
+- Progress at 01:22: Qwen bf16 `en` complete (19,296 rows, 40 rows/s); `ur` running at about 11–15 rows/s. Urdu is slower because Qwen tokenizes it to 2.4× more tokens: en 131, roman_ur 226, ur 315 tokens per prompt.
+
+### 25 Oct 2026, 01:30: Wanda 75% added; queues restructured
+
+- New variant `wanda75` (Wanda 75% unstructured) for qwen3-8b and gemma-4-e4b (commit `d1be34f`):
+  - `run.py` now resolves any `wandaNN` variant from the model's config key;
+  - `configs/runs.yaml` Exp 1 variants are now `[bf16, int8, nf4, wanda50, wanda75]`, so the grid has 60 runs.
+  - Expect heavy degradation at 75%; it is the strong-compression point.
+- Disk: each pruned copy is about 16 GB and four would not fit (57 GB free). Each copy is deleted after its 3 runs complete; its `wanda_meta.json` (perplexity before/after, per-layer sparsity) is kept in `logs/wanda_meta/` on the instance.
+- The waiting Gemma queue (`gemma-exp1`) was replaced by tmux `after-qwen`, running `logs/after_qwen_queue.sh` (copy in `scripts/eval/queues/`) with log `logs/after-qwen.log`. It waits for the Qwen queue's `QUEUE DONE`, then:
+  1. deletes `models/qwen3-8b-wanda50` once its runs are complete;
+  2. prunes Qwen to 75% → runs wanda75 → deletes the copy;
+  3. runs Gemma bf16 → nf4 → int8;
+  4. prunes Gemma to 50% → runs wanda50 → deletes;
+  5. prunes Gemma to 75% → runs wanda75 → deletes.
+- **Logging bug in `qwen-exp1`:** its `step exit N` lines always say 0, because `$?` is read after `$(date)` in the same echo. Judge Qwen-queue steps by `complete:` lines or `results/runs/*/meta.json` status instead. The `after-qwen` queue records exit codes correctly.
+- New estimate: Qwen queue 7–9 h, then `after-qwen` about 9.5–12 h (Qwen 75% about 3–3.75 h; Gemma about 6.5–8 h, since each Gemma prune is about 1.5–2 h). Total about 17–21 h, about $4.5–6 GPU at ~$0.25/h.
 
 ### Pilot results so far (500 items each, BF16)
 
