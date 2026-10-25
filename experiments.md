@@ -7,13 +7,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Phase:** 3, on **two machines**. Main Exp 1 for Qwen + Gemma is **done (40/40)**.
   - **Machine 1 `vast`** (3090 Ti):
     1. calibration ablation for Qwen and Gemma, the Qwen perplexity check and the Llama `ur_abc` pilot (`logs/old.log`, about 16:00);
-    2. **Llama-3.1-8B full Exp 1** (tmux `llama`, `logs/llama.log`, about 22:00).
-  - **Machine 2 `vast2`** (3090):
-    1. Qalb full Exp 1 (`logs/qalb.log`, about 17:30);
-    2. Qalb `wanda50mix`/`wanda25mix` (`logs/calib.log`, about 20:00).
-  - Exp 2 students are **on hold** (no downloads for now).
+    2. **Tier 1 checks**: Gemma NF4 diagnosis and the BF16 noise floor (tmux `tier1`, `logs/tier1.log`, about 18:00).
+  - **Machine 2 `vast2`** (3090): Qalb full Exp 1 (`logs/qalb.log`, about 17:30), then Qalb `wanda50mix`/`wanda25mix` (`logs/calib.log`, about 20:00).
+  - **On hold:** Llama-3.1-8B full Exp 1 and the Exp 2 students (no downloads for now).
 - **To check progress in a new session:**
-  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/llama.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
+  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/tier1.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
@@ -343,6 +341,14 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - The user prefers no download now. Qalb `wanda50mix`/`wanda25mix` go back to **Machine 2** (Qalb cached there): `logs/calib_disabled` was removed on `vast2`, so its `next` watcher runs Qalb calibration after Qalb's main runs. About 20:00.
 - Machine 1: the `qalbcalib` watcher was removed. The **Llama** watcher now waits for `OLD MACHINE ALL DONE` in `logs/old.log` (about 16:00) instead, so Llama's full Exp 1 starts earlier (about 16:00 → 22:00). Cached; no download.
 - Exp 2 students remain on hold.
+
+### 25 Oct 2026, 12:00: Tier 1 GPU checks queued; Llama full Exp 1 on hold
+
+- User: queue only the Tier 1 **GPU** tests (analysis later), and **not the Llama run**. The Llama full-Exp-1 watcher on Machine 1 was removed before it started; Llama is **on hold**, like the Exp 2 students.
+- Machine 1: tmux `tier1` waits for `OLD MACHINE ALL DONE` (about 16:00), then runs `scripts/eval/queues/tier1_queue.sh` (log `logs/tier1.log`, ends `TIER1 DONE`, about 18:00):
+  1. **Gemma NF4 diagnosis**, `scripts/compression/check_quant.py`. Perplexity (en C4, ur FineWeb-2; 8 × 2048) for bf16 / int8 / nf4 / **nf4 limited to decoder attention/MLP** (other linears such as per-layer embedding projections stay bf16). It lists the non-attention/MLP linear layers and writes `logs/quant_check_gemma-4-e4b.json`. If nf4-core-only restores perplexity, Gemma nf4 should be re-run with that config (decision pending).
+  2. **Noise floor**: BF16 rerun of Qwen and Gemma × 4 languages with `--token-budget 8192` (original 16384), so batch composition differs. Written via new `run.py --run-suffix rerun` to `runs/<model>__bf16__<lang>__rerun`. Compare final answers with the original BF16 run for the flip-rate noise floor.
+- Commit `e8339f4`. A brief SSH timeout to Machine 1 at about 11:55 was a network blip; its jobs kept running.
 
 ### Pilot results so far (500 items each, BF16)
 
