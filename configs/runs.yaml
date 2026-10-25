@@ -12,9 +12,6 @@ experiments:
   exp2:                          # distillation: students vs llama-3.1-8b bf16 (shared with exp1)
     models: [llama-3.1-minitron-4b-width, llama-3.1-minitron-4b-depth, llama-3.2-3b]
     variants: [bf16]
-  exp2_optional:                 # needs a >=40 GB GPU
-    models: [mistral-nemo-12b, mistral-nemo-minitron-8b]
-    variants: [bf16]
 
 # Which machine runs which models: `run.py --machine <name>` runs every grid run of those models.
 # Assigning whole models keeps each model's download on one machine. Two machines must never
