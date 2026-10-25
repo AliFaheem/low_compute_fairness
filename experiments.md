@@ -4,12 +4,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
 
 ## Current state
 
-- **Phase:** 3. The old `vast` machine is offline. **`vast2` (RTX 3090) runs everything:**
-  1. tmux `exp1`: `ur_abc` for Qwen and Gemma, plus Gemma wanda50/wanda25 in all languages; until about 12:30;
-  2. then tmux `qalb`: full Qalb-1.0-8B Exp 1 (5 variants × en/ur/roman_ur/ur_abc); until about 18:00–18:30.
-  - Done so far: 24 runs (Qwen 15, Gemma 9) in en/ur/roman_ur.
+- **Phase:** 3, on **two machines** since 25 Oct 10:10 (see the ~10:10 entry):
+  - **Machine 1 `vast`** (3090 Ti): Gemma Wanda (4 languages) → Qwen and Gemma `wanda50mix` → Llama `ur_abc` pilot; until about 14:30.
+  - **Machine 2 `vast2`** (3090): Qwen wanda25 `ur_abc` → Qalb full Exp 1 → Qalb `wanda50mix`; until about 18:30.
 - **To check progress in a new session:**
-  - `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log'` lists steps, exit codes and finished runs (`vast` is the old, offline machine);
+  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
@@ -251,6 +250,20 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - **Caveat for analysis:** Qwen wanda50/wanda25 `ur_abc` use the re-pruned copies; their en/ur/roman_ur runs used the originals.
 - Running: Qwen wanda50 `ur_abc`. Then Qwen 25% re-prune + `ur_abc`, then Gemma 50%/25% (4 languages each). `exp1` expected done about 13:00; then the `qalb` queue (about 19:00).
 - Disk 85/109 GB (Gemma now downloaded, plus one pruned copy).
+
+### 25 Oct 2026, ~10:10: two machines, work split; calibration ablation implemented
+
+- **Calibration ablation implemented** (commits `b254a98`, `254c1d8`):
+  - `wanda_prune.py --calib mix`: ⅓ C4 en + ⅓ FineWeb-2 `urd_Arab` + ⅓ filtered `urd_Latn`.
+    - Urdu script uses the 71 MB `urd_Arab` test shard, split into disjoint calibration/perplexity halves; the 4.8 GB train shard is too big.
+    - Roman Urdu: `urd_Latn` train for calibration, test for perplexity. Filter: ≥15% Roman Urdu function words, which keeps about 85% of docs (checked a sample).
+  - **Every prune now also measures perplexity in en/ur/roman_ur** (best-effort; the pruning itself is unchanged). `--no-save` allows measurement-only prunes.
+  - Variant `wanda50mix`, experiment `exp1_calib` (qwen, gemma, qalb); queue `scripts/eval/queues/calib_queue.sh` (with a `PPLCHECK` switch). `pyarrow` added. Tested on CPU with Qwen3-0.6B, both calibration modes.
+- **The old machine (`vast`) came back.** It had lost internet, not crashed ("Temporary failure in name resolution"). It kept running offline, so it **pruned Gemma 50% and 25%** (copies complete on disk) while its Gemma runs failed to reach HF.
+  - **Gemma Wanda perplexity (C4 en): 18.775 → 79.821 at 50% (+325%), → 18.047 at 25%.** Gemma is far more fragile than Qwen (+20% at 50%), probably because about half its parameters are per-layer embeddings, so pruning cuts deeper into its linear layers.
+- **Work split:**
+  - Machine 1 = `vast` (3090 Ti), tmux `old`, `logs/old.log`: Gemma wanda50 and wanda25 × en/ur/roman_ur/ur_abc from the existing copies → `wanda50mix` for Qwen and Gemma (+ Qwen English-50% perplexity check) → Llama `ur_abc` pilot. ETA about 14:00–14:30.
+  - Machine 2 = `vast2` (3090): finish Qwen wanda25 `ur_abc`; watcher `next` (`logs/vast2_next.log`) stops `exp1` when it reaches Gemma, then Qalb's full Exp 1 (5 variants × 4 languages, `logs/qalb.log`), then Qalb `wanda50mix` (`logs/calib.log`). ETA about 18:00–18:30.
 
 ### Pilot results so far (500 items each, BF16)
 
