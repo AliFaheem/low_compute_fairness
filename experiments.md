@@ -442,6 +442,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - The library's own switch `awq_preserve_explicit_position_embeddings` (set by its Cohere Compass definition) keeps the explicit embeddings. `awq_quant.py` sets it on the 4 Gemma 4 definition classes; the CPU check confirmed it is set on the classes in gptqmodel's `MODEL_MAP`.
   - It is recorded in `awq_meta.json`. Validation on GPU: perplexity close to BF16 (Gemma BF16 en 16.7 / ur 23.4 on 8 windows; the 16-window values are in `logs/wanda_meta/`).
 
+### 25 Oct 2026, ~19:50: Alif prune part done on Machine 3
+
+- `ALIF prune DONE` on Machine 3: Alif wanda50, wanda25, wanda50mix and wanda25mix are complete × 4 languages and uploaded. Machine 3 moved straight on to Llama's prune part (wanda50 C4 pruning at 20:01).
+- Alif quant part on Machine 1: bf16 and int8 are done; nf4 is running.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
