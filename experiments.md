@@ -6,14 +6,14 @@ Running record of what was run, where, what came out, and what was decided. Meas
 
 - **Phase:** 3, on **two machines**. Main Exp 1 for Qwen + Gemma is **done (40/40)**.
   - **Machine 1 `vast`** (3090 Ti):
-    1. calibration ablation for Qwen and Gemma, then the Qwen perplexity check and the Llama `ur_abc` pilot (`logs/old.log`, about 16:00);
-    2. Qalb calibration (`logs/qalbcalib.log`, about 18:30);
-    3. **Llama-3.1-8B full Exp 1** (`logs/llama.log`, about 00:30).
+    1. calibration ablation for Qwen and Gemma, the Qwen perplexity check and the Llama `ur_abc` pilot (`logs/old.log`, about 16:00);
+    2. **Llama-3.1-8B full Exp 1** (tmux `llama`, `logs/llama.log`, about 22:00).
   - **Machine 2 `vast2`** (3090):
     1. Qalb full Exp 1 (`logs/qalb.log`, about 17:30);
-    2. Exp 2 students: **on hold** (no downloads for now).
+    2. Qalb `wanda50mix`/`wanda25mix` (`logs/calib.log`, about 20:00).
+  - Exp 2 students are **on hold** (no downloads for now).
 - **To check progress in a new session:**
-  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/qalbcalib.log /root/low_compute_fairness/logs/llama.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/exp2.log'`;
+  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/llama.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
@@ -337,6 +337,12 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - **11:30: on hold. The user said not to download now; the `exp2` watcher was removed before anything downloaded.** Re-create it when approved.
 - Not now: Qwen3.5-9B (hybrid architecture plus vision; risky for bnb/Wanda), Mistral-NeMo-12B pair (needs ≥40 GB), Gemma-3-12B (too big for BF16).
 - Still to do when a GPU frees: Gemma nf4 check, and a noise floor (BF16 rerun).
+
+### 25 Oct 2026, 11:34: Qalb calibration moved back to Machine 2 (no download)
+
+- The user prefers no download now. Qalb `wanda50mix`/`wanda25mix` go back to **Machine 2** (Qalb cached there): `logs/calib_disabled` was removed on `vast2`, so its `next` watcher runs Qalb calibration after Qalb's main runs. About 20:00.
+- Machine 1: the `qalbcalib` watcher was removed. The **Llama** watcher now waits for `OLD MACHINE ALL DONE` in `logs/old.log` (about 16:00) instead, so Llama's full Exp 1 starts earlier (about 16:00 → 22:00). Cached; no download.
+- Exp 2 students remain on hold.
 
 ### Pilot results so far (500 items each, BF16)
 
