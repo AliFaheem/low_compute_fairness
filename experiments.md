@@ -265,6 +265,14 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Machine 1 = `vast` (3090 Ti), tmux `old`, `logs/old.log`: Gemma wanda50 and wanda25 × en/ur/roman_ur/ur_abc from the existing copies → `wanda50mix` for Qwen and Gemma (+ Qwen English-50% perplexity check) → Llama `ur_abc` pilot. ETA about 14:00–14:30.
   - Machine 2 = `vast2` (3090): finish Qwen wanda25 `ur_abc`; watcher `next` (`logs/vast2_next.log`) stops `exp1` when it reaches Gemma, then Qalb's full Exp 1 (5 variants × 4 languages, `logs/qalb.log`), then Qalb `wanda50mix` (`logs/calib.log`). ETA about 18:00–18:30.
 
+### 25 Oct 2026, ~10:25: calibration ablation at both pruning levels
+
+- User decision: mixed-language calibration for **both Wanda levels**. New variant `wanda25mix` next to `wanda50mix`, for Qwen, Gemma and Qalb (commit `71c1009`).
+  - `calib_queue.sh` loops `PCTS="50 25"`.
+  - Calibration does not apply to INT8/NF4 (no data) or to distillation (official students).
+- Matched design: {English C4, mixed} × {25%, 50%}, which shows whether calibration language matters more at heavier pruning.
+- Pulled on both machines before their calibration queues start. Adds about 3 h GPU in total. New ETAs: Machine 1 about 16:00, Machine 2 about 20:00.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
