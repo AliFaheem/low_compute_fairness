@@ -9,6 +9,7 @@ variants:
   wanda25: {pruned: wanda25}     # Wanda 25% unstructured (light pruning)
   wanda50mix: {pruned: wanda50mix}   # Wanda 50%, calibration 1/3 C4 en + 1/3 FineWeb-2 Urdu + 1/3 Roman Urdu (ablation)
   wanda25mix: {pruned: wanda25mix}   # Wanda 25%, same mixed calibration (ablation)
+  awq: {quantization: awq}       # AWQ 4-bit, group 128, mixed calibration; local copy from scripts/compression/awq_quant.py
 
 models:
   # Exp 1: quantization and pruning
