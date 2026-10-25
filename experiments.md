@@ -153,6 +153,20 @@ Running record of what was run, where, what came out, and what was decided. **Re
 - Pulled on Vast before Gemma started, so **all Gemma runs and all Qwen runs after bf16 (nf4, int8, wanda) have `top`**. Qwen bf16 (en, ur, roman_ur) does not: those were already running on the old code. Its label mass is ≈0.9, so it matters less.
 - Tested on CPU with Qwen3-0.6B, 3 items: rows are correct and `accuracy.py` still reads them.
 
+### 25 Oct 2026, 06:34: status, 24/30 Exp 1 runs done
+
+- Complete (3 languages each, 19,296 rows, uploaded): **Qwen3-8B bf16, nf4, int8, wanda50, wanda25** and **Gemma-4-E4B bf16, nf4, int8**. Every step exited 0.
+- Running: Gemma prune 50% (block 36/42), then the Gemma wanda50 runs, then the 25% prune and wanda25 runs. Expected finish about 07:45–08:00.
+- Actual timings on the 3090 Ti were much faster than estimated:
+  - Qwen bf16 roman_ur remainder about 5 min; Gemma bf16 23 min (3 languages);
+  - Qwen nf4 43 min, Qwen int8 34 min; Gemma nf4 23 min, Gemma int8 23 min;
+  - Wanda prune about 19–20 min per model (not 2–3 h); each Qwen wanda run 43 min.
+  - Whole Exp 1 for 2 models is about 6.3 h, not 17–21 h.
+- Wanda sanity checks (`logs/wanda_meta/*.json` on the instance), Qwen3-8B, C4 validation perplexity 7.163:
+  - wanda25 → 7.252 (+1%), exactly 25% of pruned-layer weights zero;
+  - wanda50 → 8.566 (+20%), exactly 50% zero.
+- Pruned copies are deleted after their runs; disk steady at 54/109 GB.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
