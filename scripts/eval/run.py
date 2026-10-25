@@ -6,7 +6,8 @@
 
 Each run writes results/runs/<model>__<variant>__<lang>/ (results/smoke/... with --limit):
   preds.jsonl  one row per (item, option order): log-probs of the 3 labels in ORIGINAL option order
-               (ans0, ans1, ans2), and `mass`, the full-vocabulary probability on the 3 labels
+               (ans0, ans1, ans2), `mass`, the full-vocabulary probability on the 3 labels, and `top`,
+               the 10 most likely next tokens [id, text, log-prob] (what the model wanted to say)
   meta.json    model revision, variant settings, library versions, GPU, data and prompt hashes, status
 
 Results are uploaded to the private HF dataset HF_RESULTS_REPO every few minutes and at the end
@@ -33,6 +34,7 @@ import common
 import hub
 
 MIN_BUDGET = 512
+TOP_K = 10  # next tokens stored per row (token id, text, log-prob) for debugging off-label answers
 
 
 def git_state():
@@ -221,7 +223,9 @@ def score_rows(model, tok, todo, prompts, lengths, label_ids, preds_path, upload
                 enc = tok([prompts[i] for i in idx], return_tensors="pt", padding=True, add_special_tokens=True)
                 enc = {k: v.to(model.device) for k, v in enc.items()}
                 with torch.inference_mode():
-                    lp = last_token_logprobs(model, enc)[:, label_ids].cpu()
+                    full = last_token_logprobs(model, enc)
+                    lp = full[:, label_ids].cpu()
+                    top_v, top_i = (t.cpu() for t in full.topk(TOP_K, dim=-1))  # what the model wanted to say
             except torch.OutOfMemoryError:
                 torch.cuda.empty_cache()
                 if budget <= MIN_BUDGET or len(idx) == 1:
@@ -239,8 +243,10 @@ def score_rows(model, tok, todo, prompts, lengths, label_ids, preds_path, upload
                 orig = [0.0] * 3
                 for pos in range(3):
                     orig[shown[pos]] = round(lp[row, pos].item(), 6)
+                top = [[int(t), tok.decode([int(t)]), round(float(v), 4)] for v, t in zip(top_v[row], top_i[row])]
                 lines.append(json.dumps({"id": item["id"], "order": order, "logp": orig,
-                                         "mass": round(float(lp[row].exp().sum()), 6)}) + "\n")
+                                         "mass": round(float(lp[row].exp().sum()), 6), "top": top},
+                                        ensure_ascii=False) + "\n")
             with uploader.lock:  # never upload a half-written batch
                 f.writelines(lines)
                 f.flush()
