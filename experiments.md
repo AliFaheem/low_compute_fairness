@@ -428,6 +428,20 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - `awq` entries were added for Llama and Alif (commit `6b7ec89`).
 - Gemma AWQ: patch the gptqmodel Gemma 4 rotary call (`layer_type`), test on Machine 2 after its queue (about 21:45). Validate by perplexity close to BF16, as Qwen's was.
 
+### 25 Oct 2026, 20:00: AWQ scoring running; Gemma fix found
+
+- **Qalb AWQ quantized OK.** Perplexity en 7.94, ur 3.893, roman_ur 24.636, vs BF16 7.457 / 3.682 / 21.425 (+6% / +6% / +15%).
+- Scoring failed twice on our side:
+  - first, `awq` was missing from the `variants:` registry (fix `2fdcbab`);
+  - then run.py's layer check looked for `QuantLinear` class names, but gptqmodel's AWQ layers are `Awq*Linear` (fix `b5db828`).
+  - Both quantized copies were kept, so nothing had to be redone.
+- **Qwen AWQ now scoring**: 252 `AwqMarlinLinear` layers, 6.1 GB, about 27 rows/s in English. tmux `awq3` on Machine 2 runs Qwen, then Qalb (score only), then Gemma (quantize + score).
+- **Gemma 4 fix (`52ae2f8`), no library edits.**
+  - gptqmodel's Gemma 4 definition (`_prepare_gemma4_replay_kwargs`) already supplies per-layer position embeddings computed with the right `layer_type`.
+  - AWQ's `_prepare_module_forward` then overwrote them by calling `rotary(x, pos)` without `layer_type`, which crashed.
+  - The library's own switch `awq_preserve_explicit_position_embeddings` (set by its Cohere Compass definition) keeps the explicit embeddings. `awq_quant.py` sets it on the 4 Gemma 4 definition classes; the CPU check confirmed it is set on the classes in gptqmodel's `MODEL_MAP`.
+  - It is recorded in `awq_meta.json`. Validation on GPU: perplexity close to BF16 (Gemma BF16 en 16.7 / ur 23.4 on 8 windows; the 16-window values are in `logs/wanda_meta/`).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
