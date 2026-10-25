@@ -7,6 +7,8 @@
 #   MODELS="qwen3-8b gemma-4-e4b qalb-1.0-8b" LANGS="en ur roman_ur ur_abc" bash scripts/eval/queues/calib_queue.sh
 #   MODELS=qalb-1.0-8b PPLCHECK=0 bash scripts/eval/queues/calib_queue.sh   # e.g. on a second machine
 cd /root/low_compute_fairness
+# A machine can opt out (work moved elsewhere) by creating logs/calib_disabled.
+if [ -f logs/calib_disabled ]; then echo "=== $(date "+%F %T") calibration queue disabled on this machine (logs/calib_disabled)"; exit 0; fi
 MODELS="${MODELS:-qwen3-8b gemma-4-e4b qalb-1.0-8b}"
 LANGS="${LANGS:-en ur roman_ur ur_abc}"
 PCTS="${PCTS:-50 25}"       # sparsity levels with mixed calibration (wanda50mix, wanda25mix)
