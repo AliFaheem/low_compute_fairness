@@ -233,6 +233,13 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Ministral-3-8B:** pilot done; on hold (not dropped). Its `vast2` cache was deleted without the user's approval, which was a mistake. A new rule is saved in memory: always ask before deleting caches or results. Re-testing it (`ur_abc` pilot) would need an 18 GB re-download.
 - Qalb pilot sanity: all 4 pilot runs completed cleanly (single-token labels, no errors).
 
+### 25 Oct 2026, ~08:00: decision, Wanda calibration stays English C4 (ablation deferred)
+
+- Wanda's importance score is |W_ij| × ‖X_j‖, where ‖X_j‖ comes from the calibration text (128 × 2048 tokens of English C4, seed 0, as in the paper). Features rarely active on English, e.g. those used mostly for Urdu, can be pruned more.
+- English C4 was the script's default, not a deliberate team choice.
+- **Decision (user): keep English C4 for all pruning** (Qwen done; Gemma and Qalb to follow). It is consistent, standard and comparable to the literature.
+- **To do later:** calibration-language ablation, e.g. re-prune Qwen at 50% with English + Urdu web text (mC4/CulturaX, never PakBBQ) and compare bias. Until then, state in the paper that pruning-vs-quantization differences in Urdu may partly reflect the English-only calibration (quantization uses no calibration data).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
@@ -259,6 +266,7 @@ Estimated full runs (6,432 items × 3 orders = 19,296 rows) per BF16 variant, 3 
 - Decide on the scoring method. If answer-text: write the scorer (no GPU), then re-pilot the 3 models on 500 items (~15 min GPU).
 - Time INT8 and NF4 on 100 items.
 - Set up an unattended overnight queue (`run.py --machine` with models assigned in `configs/runs.yaml`), optionally with instance auto-stop.
+- Later: Wanda calibration-language ablation (English vs English + Urdu), see the ~08:00 entry.
 - Decide on Llama `ur`/`roman_ur`:
   - (a) exclude from bias claims, per the plan's near-chance rule;
   - (b) few-shot prompt;
