@@ -51,6 +51,8 @@ models:
   qalb-1.0-8b:                   # Urdu full fine-tune of Llama-3.1-8B (instruction-tuned); UrduMMLU ~31-35%
     hf_id: enstazao/Qalb-1.0-8B-Instruct
     revision: 6792251690a01687b7ed19690914321e0c67c738
+    wanda50: {hf_id: models/qalb-1.0-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local
+    wanda25: {hf_id: models/qalb-1.0-8b-wanda25, revision: null}
   ministral-3-8b:                # best small open model on UrduMMLU (~57%); multimodal checkpoint, run text-only
     hf_id: mistralai/Ministral-3-8B-Base-2512
     revision: d4883f9b36aa2e5d775730d3fdba3d30de51a8ef
