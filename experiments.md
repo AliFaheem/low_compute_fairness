@@ -359,6 +359,9 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Machine 1 tmux `alif` (`scripts/eval/queues/alif_pilot.sh`, log `logs/alif.log`) waits for `TIER1 DONE`, then pilots BF16 on 500 items × en/ur/roman_ur/ur_abc (about 18:00–18:30).
 - New machine: not needed for a smoke test. Reconsider if Alif (or Llama) gets a full Exp 1.
 - Commit `6382434`.
+- 15:04: user asked for **all experiments on Alif**. Added to `configs/runs.yaml` (`exp1` and `exp1_calib`) with local pruned paths in `models.yaml`. New `scripts/eval/queues/alif_full.sh` in two parts so two machines can share it: `PART=quant` (bf16, int8, nf4) and `PART=prune` (wanda50, wanda25, wanda50mix, wanda25mix).
+- Machine 1: tmux `alif_q` waits for `ALIF PILOT DONE`, then runs the quant part (log `logs/alif_full.log`, about 18:30–22:00). tmux `alif_p` waits for `ALIF quant DONE`, then runs the prune part (log `logs/alif_prune.log`, about 22:00–04:30). This is the fallback. If a third machine is rented, run `PART=prune` there and kill `alif_p` on Machine 1 before it starts.
+- Machine 2 was not used: it has no Llama base cached, and its disk (34 GB free) can't hold base + adapter + merged + one pruned copy.
 
 ### Pilot results so far (500 items each, BF16)
 
