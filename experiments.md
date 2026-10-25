@@ -147,6 +147,12 @@ Running record of what was run, where, what came out, and what was decided. **Re
 - Untested on this GPU: NF4/INT8 loading (low risk; checked at load time) and Wanda on 8B models (medium risk; only CPU-tested on 0.6B). These run last.
 - Older queue scripts (`qwen_queue.sh`, `after_qwen_queue.sh`) are kept in `scripts/eval/queues/` for the record only.
 
+### 25 Oct 2026, ~01:50: preds.jsonl now stores the top-10 next tokens
+
+- Each row now also has `top`: the 10 most likely next tokens `[token id, text, log-prob]`, taken from the same forward pass (commit `069d5b6`). This lets us measure later how often a model "answers" in words, e.g. Gemma writing `Namaloom`/`نامعلوم` for "Unknown", without re-running. It adds about 4 MB per run.
+- Pulled on Vast before Gemma started, so **all Gemma runs and all Qwen runs after bf16 (nf4, int8, wanda) have `top`**. Qwen bf16 (en, ur, roman_ur) does not: those were already running on the old code. Its label mass is ≈0.9, so it matters less.
+- Tested on CPU with Qwen3-0.6B, 3 items: rows are correct and `accuracy.py` still reads them.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
