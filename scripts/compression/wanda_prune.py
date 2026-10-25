@@ -55,25 +55,28 @@ def fw2_docs(key):
     """Texts of one FineWeb-2 Urdu shard; Roman Urdu keeps docs with >= 15% Roman Urdu function words."""
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
-    texts = pq.read_table(hf_hub_download(FW2_REPO, FW2_FILES[key], repo_type="dataset"), columns=["text"]) \
-        .column("text").to_pylist()
+    table = pq.read_table(hf_hub_download(FW2_REPO, FW2_FILES[key], repo_type="dataset"), columns=["id", "text"])
+    docs = list(zip(table.column("id").to_pylist(), table.column("text").to_pylist()))
     if key.startswith("latn"):
         def ratio(s):
             w = re.findall(r"[a-zA-Z]+", s.lower())
             return sum(x in ROMAN_URDU_WORDS for x in w) / max(len(w), 1)
-        texts = [t for t in texts if ratio(t) >= 0.15]
-    return texts
+        docs = [d for d in docs if ratio(d[1]) >= 0.15]
+    return docs  # [(fineweb-2 id, text)]
 
 
-def packed_windows(tok, docs, n, seqlen, seed):
-    """n seqlen-token windows from shuffled docs joined with EOS (Urdu web docs are often short)."""
+def packed_windows(tok, docs, n, seqlen, seed, record=None):
+    """n seqlen-token windows from shuffled (id, text) docs joined with EOS (Urdu web docs are often short).
+    If `record` is a list, the documents used are appended to it."""
     rng = random.Random(seed)
     docs = docs[:]
     rng.shuffle(docs)
     buf, out = [], []
     eos = tok.eos_token_id if tok.eos_token_id is not None else 0
-    for d in docs:
-        buf += tok(d, add_special_tokens=False).input_ids + [eos]
+    for doc_id, text in docs:
+        buf += tok(text, add_special_tokens=False).input_ids + [eos]
+        if record is not None:
+            record.append({"id": doc_id, "text": text})
         while len(buf) >= seqlen and len(out) < n:
             out.append(torch.tensor([buf[:seqlen]]))
             buf = buf[seqlen:]
@@ -91,19 +94,33 @@ def urdu_split(seed):
     return [docs[i] for i in idx[:half]], [docs[i] for i in idx[half:]]
 
 
-def c4_windows(tok, path, n, seqlen, seed):
-    """n random seqlen-token windows from documents longer than seqlen (as in the Wanda code)."""
+def c4_windows(tok, path, n, seqlen, seed, record=None):
+    """n random seqlen-token windows from documents longer than seqlen (as in the Wanda code).
+    If `record` is a list, each window's source document (url, token offset, text) is appended to it."""
     from huggingface_hub import hf_hub_download
-    docs = [json.loads(l)["text"] for l in gzip.open(hf_hub_download(C4_REPO, path, repo_type="dataset"), "rt")]
+    rows = [json.loads(l) for l in gzip.open(hf_hub_download(C4_REPO, path, repo_type="dataset"), "rt")]
+    docs = [r["text"] for r in rows]
     rng = random.Random(seed)
     out = []
     while len(out) < n:
-        ids = tok(docs[rng.randrange(len(docs))], return_tensors="pt").input_ids
+        i = rng.randrange(len(docs))
+        ids = tok(docs[i], return_tensors="pt").input_ids
         if ids.shape[1] <= seqlen:
             continue
         start = rng.randrange(ids.shape[1] - seqlen)
         out.append(ids[:, start:start + seqlen])
+        if record is not None:
+            record.append({"id": f"{path}#{i}", "url": rows[i].get("url"), "token_start": start, "text": docs[i]})
     return out
+
+
+def save_calibration(directory, name, docs):
+    """The exact calibration documents used, one JSON line each (source, file, id/url, text)."""
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, f"{name}.jsonl")
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(d, ensure_ascii=False) + "\n" for d in docs)
+    print(f"  calibration documents: {len(docs)} -> {path}", flush=True)
 
 
 def decoder_blocks(model):
@@ -194,6 +211,7 @@ def main():
     ap.add_argument("--out", help="output dir (default models/<model>-wanda<pct>)")
     ap.add_argument("--push", metavar="HF_REPO", help="upload to this private HF model repo")
     ap.add_argument("--no-save", action="store_true", help="only measure (write wanda_meta.json, not the weights)")
+    ap.add_argument("--calib-log", default="logs/calibration", help="where to save the calibration documents used")
     args = ap.parse_args()
     if args.structure == "2:4":
         args.sparsity = 0.5
@@ -217,15 +235,22 @@ def main():
     if args.calib == "mix":
         ur_calib_pool, ur_eval_pool = urdu_split(args.seed)
         n_en = args.nsamples - 2 * (args.nsamples // 3)
-        calib = (c4_windows(tok, C4_TRAIN, n_en, args.seqlen, args.seed)
-                 + packed_windows(tok, ur_calib_pool, args.nsamples // 3, args.seqlen, args.seed)
-                 + packed_windows(tok, fw2_docs("latn_train"), args.nsamples // 3, args.seqlen, args.seed))
+        rec_en, rec_ur, rec_ro = [], [], []
+        calib = (c4_windows(tok, C4_TRAIN, n_en, args.seqlen, args.seed, rec_en)
+                 + packed_windows(tok, ur_calib_pool, args.nsamples // 3, args.seqlen, args.seed, rec_ur)
+                 + packed_windows(tok, fw2_docs("latn_train"), args.nsamples // 3, args.seqlen, args.seed, rec_ro))
+        calib_docs = [dict(r, source="en", file=C4_TRAIN) for r in rec_en] \
+            + [dict(r, source="ur", file=FW2_FILES["arab_test"]) for r in rec_ur] \
+            + [dict(r, source="roman_ur", file=FW2_FILES["latn_train"]) for r in rec_ro]
         calib_record = {"mix": {"en": [C4_REPO, C4_TRAIN, n_en],
                                 "ur": [FW2_REPO, FW2_FILES["arab_test"] + " (calibration half)", args.nsamples // 3],
                                 "roman_ur": [FW2_REPO, FW2_FILES["latn_train"] + " (filtered)", args.nsamples // 3]}}
     else:
-        calib = c4_windows(tok, C4_TRAIN, args.nsamples, args.seqlen, args.seed)
+        rec_en = []
+        calib = c4_windows(tok, C4_TRAIN, args.nsamples, args.seqlen, args.seed, rec_en)
         calib_record = {"dataset": C4_REPO, "file": C4_TRAIN}
+        calib_docs = [dict(r, source="en", file=C4_TRAIN) for r in rec_en]
+    save_calibration(args.calib_log, f"{args.model}-{tag}", calib_docs)
 
     evals = {}
     if args.eval_samples:
