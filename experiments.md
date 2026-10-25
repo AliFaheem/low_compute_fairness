@@ -302,6 +302,27 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - `calib_queue.sh` now exits immediately if `logs/calib_disabled` exists (commit `0a26507`). The marker was created on **Machine 2 only**, so Machine 2's `next` watcher finishes after Qalb's main runs (about 17:30).
   - Machine 1: tmux `qalbcalib` waits for `OLD MACHINE ALL DONE` in `logs/old.log`, then runs `MODELS=qalb-1.0-8b PPLCHECK=0 calib_queue.sh` (log `logs/qalbcalib.log`; downloads Qalb, 16 GB). Ends with `M1 QALB CALIB DONE`, about 18:30.
 
+### 25 Oct 2026, ~11:40: gut check of the 40 completed Qwen + Gemma runs
+
+- Script: `scripts/analysis/gut_check.py`. It computes accuracy, BBQ bias scores on the 6,046/6,432 auto-matched items (polarity-aware; unknown answers excluded; `s_amb = (1 − acc_amb) · s_dis_amb`) and flips vs BF16 (final answer = argmax of probabilities averaged over the 3 orders).
+- **Qwen3-8B behaves sensibly:**
+  - The order follows compression strength: int8 ≈ wanda25 (en flips 4%) < nf4 (9%) < wanda50 (22%).
+  - BF16 shows stereotype-consistent bias (en `s_amb` 0.29).
+  - **English bias rises with compression** (0.29 → nf4 0.34 → wanda50 0.40) as ambiguous accuracy (choosing Unknown) falls (41 → 30 → 11). This fits H2.
+  - **Urdu/Roman Urdu are more fragile:** light compression flips 8–19% vs 4% in English (fits H3).
+  - `ur` and `ur_abc` agree (`ur_abc` slightly more accurate).
+  - Caveat: in ur/roman_ur, `s_amb` falls at wanda50 because accuracy falls (closer to random), not because the model is fairer. Interpret bias together with accuracy.
+- **Gemma-4-E4B:** int8/wanda25 are fine.
+  - **wanda50 collapses** (en disambiguated 82 → 42; flips 56%), consistent with its perplexity (18.8 → 79.8): genuine.
+  - **nf4 also collapses** (en 82 → 36, ur 69 → 47; flips 57%). This is **suspicious**: Qwen nf4 lost under 1 point. Likely bitsandbytes 4-bit quantizing Gemma-4-specific modules (per-layer embedding projections etc.).
+  - **To do:** perplexity test of Gemma nf4 vs bf16, and a fix (e.g. skip those modules) before reporting Gemma nf4.
+  - Gemma's near-zero Unknown rate (ambiguous accuracy 0–3%) limits its `s_amb` interpretation (known).
+- Implications:
+  - the pipeline is valid for standard dense decoders, so adding more such models is worthwhile;
+  - Gemma-like architectures need extra validation;
+  - a noise floor is still needed (BF16 rerun or order-flip rate) to judge small flip rates;
+  - wait for the Llama `ur_abc` pilot and Qalb before choosing more models.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
