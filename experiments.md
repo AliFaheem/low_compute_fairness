@@ -9,7 +9,7 @@ Running record of what was run, where, what came out, and what was decided. Meas
   2. then tmux `qalb`: full Qalb-1.0-8B Exp 1 (5 variants × en/ur/roman_ur/ur_abc); until about 18:00–18:30.
   - Done so far: 24 runs (Qwen 15, Gemma 9) in en/ur/roman_ur.
 - **To check progress in a new session:**
-  - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log'` lists steps, exit codes and finished runs;
+  - `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log'` lists steps, exit codes and finished runs (`vast` is the old, offline machine);
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
