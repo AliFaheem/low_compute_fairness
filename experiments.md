@@ -382,6 +382,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Conclusion: keep the existing Gemma nf4 runs as the main result (the same standard bnb config as every model). An `nf4core` variant is optional supplementary work (decision pending).
 - The noise-floor reruns started at 15:53 (Qwen first).
 
+### 25 Oct 2026, 17:30: Tier 1 done on Machine 1
+
+- `TIER1 DONE` at 17:29. Both noise-floor reruns are complete and uploaded: `qwen3-8b__bf16__<lang>__rerun` and `gemma-4-e4b__bf16__<lang>__rerun`, 4 languages each. All steps exited 0. Comparing them with the original BF16 runs is local analysis, later.
+- The Alif smoke test (500 items × 4 languages) started on Machine 1 at 17:30; Alif `bf16`/`int8`/`nf4` follow automatically.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
