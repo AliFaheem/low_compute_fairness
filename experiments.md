@@ -466,6 +466,15 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Online copy of the dashboard: https://claude.ai/artifact/JpQ3q1VGRKsah64ZqNUQwu (Dashboard type; private). The same CSVs are uploaded about every 15 minutes by the session's check.
 - The Mac is kept awake with `caffeinate -i -s -t 36000`, so the session's checks continue (it must stay plugged in).
 
+### 26 Oct 2026, 03:29 PKT (22:29 UTC): Machine 2 auto-stopped; Qalb AWQ done; Gemma AWQ failed again (new error)
+
+- **Qalb AWQ complete** × 4 languages (scored 21:12–22:21 UTC). Qwen AWQ was already complete. Both quantized copies were deleted after scoring (meta in `logs/awq_meta/`).
+- **Gemma AWQ, attempt with the rotary fix:** the `layer_type` crash is gone (scale search ran on layer 0), but a new gptqmodel error appears when the found scales are applied: `scale_ln_fcs: The size of tensor a (2560) must match the size of tensor b (256)` in `awq/quantize/scale.py`.
+  - gptqmodel's Gemma 4 module tree includes the per-layer-embedding adapters (`per_layer_input_gate`, `post_per_layer_input_norm`, `per_layer_projection`, 256-dim). It pairs a norm with linears of a different width there.
+  - Deterministic, so a retry would fail the same way. Not retried.
+- The AWQ queue ended, so autostop stopped Machine 2 at 22:29 UTC, as designed (first real autostop: it works). The user restarted it at about 22:35.
+- Possible fix (decision pending, user): leave Gemma's per-layer-embedding adapters in bf16 and AWQ-quantize only decoder attention + MLP, by overriding the module tree. This matches what AWQ covers in Qwen/Llama/Qalb/Alif, which have no such layers, and mirrors the NF4 "core only" check.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
