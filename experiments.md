@@ -447,6 +447,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - `ALIF prune DONE` on Machine 3: Alif wanda50, wanda25, wanda50mix and wanda25mix are complete × 4 languages and uploaded. Machine 3 moved straight on to Llama's prune part (wanda50 C4 pruning at 20:01).
 - Alif quant part on Machine 1: bf16 and int8 are done; nf4 is running.
 
+### 25 Oct 2026, 20:12: Alif Exp 1 complete (except AWQ); Llama started on both machines
+
+- `ALIF quant DONE` on Machine 1 at 20:11 (bf16, int8, nf4 × 4 languages). With the prune part, **Alif has all 7 Exp 1 + calibration variants complete**; only AWQ is left (Machine 3, last).
+- Llama-3.1-8B started at once: Machine 1 bf16 (quant part) from 20:12; Machine 3 wanda50 scoring from 20:11, after a 13-minute prune.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
