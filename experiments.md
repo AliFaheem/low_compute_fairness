@@ -452,6 +452,20 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - `ALIF quant DONE` on Machine 1 at 20:11 (bf16, int8, nf4 × 4 languages). With the prune part, **Alif has all 7 Exp 1 + calibration variants complete**; only AWQ is left (Machine 3, last).
 - Llama-3.1-8B started at once: Machine 1 bf16 (quant part) from 20:12; Machine 3 wanda50 scoring from 20:11, after a 13-minute prune.
 
+### 26 Oct 2026, 02:50 PKT (21:50 UTC): overnight plan, auto-stop armed (user)
+
+- User going to sleep for 7–8 h. Approved:
+  - (1) each machine stops itself when its work is done;
+  - (2) a failed step is retried once, then logged and skipped;
+  - (3) Alif AWQ moved from Machine 3 to Machine 1.
+- New `scripts/eval/queues/autostop.sh` (commit `9fc4743`): waits until the listed tmux sessions are gone and no run/prune/AWQ/merge process is left, waits 5 more minutes, then runs `vastai stop instance $CONTAINER_ID` with the Vast-set `CONTAINER_API_KEY`, read from `/proc/1/environ` if tmux lacks it. Stop halts GPU billing; the disk is kept (storage still billed) and the instance can be restarted from the Vast console. Log: `logs/autostop.log`.
+  - Machine 1 waits for `llama_q awq awq_alif`. tmux `awq_alif` runs Alif AWQ after Llama AWQ; Machine 1 already has `models/alif-1.0-8b`, the AWQ venv and the calibration file.
+  - Machine 2 waits for `awq3` (Qwen done; Qalb scoring, then Gemma).
+  - Machine 3 waits for `llama_p`. Its Alif AWQ watcher was removed.
+- Expected stops (PKT): Machine 2 about 04:40, Machine 1 and Machine 3 about 06:00.
+- Online copy of the dashboard: https://claude.ai/artifact/JpQ3q1VGRKsah64ZqNUQwu (Dashboard type; private). The same CSVs are uploaded about every 15 minutes by the session's check.
+- The Mac is kept awake with `caffeinate -i -s -t 36000`, so the session's checks continue (it must stay plugged in).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
