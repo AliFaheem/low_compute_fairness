@@ -1,6 +1,6 @@
 # Experiment log
 
-Running record of what was run, where, what came out, and what was decided. **Read this first in a new session, and append to it after every run or decision.** Newest entries go at the bottom of the Log. Plan and protocol live in `CLAUDE.md` (section "Experiment plan"); this file is the history.
+Running record of what was run, where, what came out, and what was decided. Measured speeds, memory, pruning time and costs are in `docs/compute_and_cost.md`. **Read this first in a new session, and append to it after every run or decision.** Newest entries go at the bottom of the Log. Plan and protocol live in `CLAUDE.md` (section "Experiment plan"); this file is the history.
 
 ## Current state
 

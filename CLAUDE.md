@@ -90,6 +90,8 @@ Known problems in the authors' code. Do not copy them:
 
 ## Experiment plan
 
+**`docs/compute_and_cost.md`** has measured throughput, memory, pruning time and Vast costs; use it for planning, and update it when new hardware, models or variants are measured.
+
 **`experiments.md` is the running log** of runs, machines, results and decisions. Read it at the start of a session. Append to it after every run, finding or decision: newest at the bottom of the Log, and keep "Current state" up to date.
 
 The deck is a starting point, not a spec: choices change for practical reasons (cost, tooling, time). Plan agreed 25 Oct 2026.
