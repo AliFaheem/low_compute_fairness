@@ -48,7 +48,9 @@ def grid():
 
 
 def data_files(lang):
-    return sorted(glob.glob(os.path.join(DATA_DIR, lang, "*.jsonl")))
+    """Data split of a prompt language; prompt variants such as ur_abc reuse another split (`data` key)."""
+    split = json.load(open(PROMPTS, encoding="utf-8")).get(lang, {}).get("data", lang)
+    return sorted(glob.glob(os.path.join(DATA_DIR, split, "*.jsonl")))
 
 
 def load_items(lang):

@@ -289,7 +289,7 @@ def main():
     ap.add_argument("--machine", help="run every grid run assigned to this machine in configs/runs.yaml")
     ap.add_argument("--model")
     ap.add_argument("--variant")
-    ap.add_argument("--lang", nargs="+", choices=["en", "ur", "roman_ur"])
+    ap.add_argument("--lang", nargs="+", choices=["en", "ur", "roman_ur", "ur_abc"])
     ap.add_argument("--limit", type=int, help="score an evenly spaced sample of N items (smoke test)")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--no-upload", action="store_true", help="do not upload results to HF_RESULTS_REPO")
