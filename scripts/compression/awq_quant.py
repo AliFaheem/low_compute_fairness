@@ -122,7 +122,10 @@ def main():
     src = spec["hf_id"]
     if spec["revision"]:
         from huggingface_hub import snapshot_download
-        src = snapshot_download(spec["hf_id"], revision=spec["revision"])
+        # Only the transformers files: some repos (Llama) also ship a second copy of the weights under original/.
+        src = snapshot_download(spec["hf_id"], revision=spec["revision"],
+                                allow_patterns=["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"],
+                                ignore_patterns=["original/*"])
     model = GPTQModel.load(src, qc)
     model.quantize(calib, batch_size=1, tokenizer=tok)
     model.save(out)
