@@ -238,7 +238,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Wanda's importance score is |W_ij| × ‖X_j‖, where ‖X_j‖ comes from the calibration text (128 × 2048 tokens of English C4, seed 0, as in the paper). Features rarely active on English, e.g. those used mostly for Urdu, can be pruned more.
 - English C4 was the script's default, not a deliberate team choice.
 - **Decision (user): keep English C4 for all pruning** (Qwen done; Gemma and Qalb to follow). It is consistent, standard and comparable to the literature.
-- **To do later:** calibration-language ablation, e.g. re-prune Qwen at 50% with English + Urdu web text (mC4/CulturaX, never PakBBQ) and compare bias. Until then, state in the paper that pruning-vs-quantization differences in Urdu may partly reflect the English-only calibration (quantization uses no calibration data).
+- **To do later:** calibration-language ablation. Plan as discussed:
+  - Data: **FineWeb-2** (`HuggingFaceFW/fineweb-2`, ODC-By, not gated) has `urd_Arab` (Urdu script) and **`urd_Latn` (Roman Urdu)**, both with train/test splits. Backups: mC4 Urdu (`allenai/c4` multilingual), Urdu Wikipedia, `Mavkif/Roman-Urdu-Parl-split`.
+  - Design: condition A = English C4 (done); condition **B = mixed**: ⅓ C4 en + ⅓ FineWeb-2 `urd_Arab` + ⅓ `urd_Latn`, same 128 × 2048 tokens, seed 0. One pruned model per condition, so every language is evaluated on the same pruned model (paired). Per-language calibration was rejected: a different model per language confounds the cross-language comparison (H3).
+  - Before use: inspect and filter `urd_Latn` (web "Roman Urdu" can be mixed with English/Hindi); pack short documents into 2048-token windows; check no overlap with PakBBQ.
+  - Also measure perplexity on all 3 languages (C4 en validation + FineWeb-2 `urd_Arab`/`urd_Latn` test) for every pruned model, including the existing English-calibrated ones. Until then, state in the paper that pruning-vs-quantization differences in Urdu may partly reflect the English-only calibration (quantization uses no calibration data).
 
 ### 25 Oct 2026, 09:35: status on `vast2`, 30/60 runs done
 
