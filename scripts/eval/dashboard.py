@@ -17,10 +17,10 @@ import argparse
 import csv
 import io
 import json
-import multiprocessing
 import os
 import re
 import subprocess
+import sys
 import time
 
 import common
@@ -177,16 +177,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--every", type=int, metavar="SECONDS", help="repeat every SECONDS")
     args = ap.parse_args()
+    if not args.every:
+        safe_update()
+        return
     while True:
-        # Each update runs in its own process with a time limit: a hung HF or SSH call must not stall the loop.
-        proc = multiprocessing.Process(target=safe_update)
-        proc.start()
-        proc.join(UPDATE_TIMEOUT)
-        if proc.is_alive():
-            proc.terminate()
+        # Each update runs as a fresh subprocess with a time limit: a hung HF or SSH call must not stall the loop.
+        try:
+            subprocess.run([sys.executable, os.path.abspath(__file__)], timeout=UPDATE_TIMEOUT)
+        except subprocess.TimeoutExpired:
             print(f"{time.strftime('%H:%M:%S')}: update timed out after {UPDATE_TIMEOUT}s", flush=True)
-        if not args.every:
-            break
         time.sleep(args.every)
 
 
