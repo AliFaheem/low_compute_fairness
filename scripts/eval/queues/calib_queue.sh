@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wanda calibration-language ablation (variant wanda50mix): prune at 50% with mixed calibration
+# Wanda calibration-language ablation (variants wanda50mix, wanda25mix): prune at 50% and 25% with mixed calibration
 # (1/3 C4 en + 1/3 FineWeb-2 Urdu + 1/3 Roman Urdu), run all languages, delete the copy (planned cleanup).
 # Then re-prune Qwen's English-calibrated 50% without saving, only to measure its Urdu/Roman Urdu perplexity
 # (its original prune predates multi-language perplexity). Skips completed runs.
@@ -9,6 +9,7 @@
 cd /root/low_compute_fairness
 MODELS="${MODELS:-qwen3-8b gemma-4-e4b qalb-1.0-8b}"
 LANGS="${LANGS:-en ur roman_ur ur_abc}"
+PCTS="${PCTS:-50 25}"       # sparsity levels with mixed calibration (wanda50mix, wanda25mix)
 PPLCHECK="${PPLCHECK:-1}"   # 0 on machines that should not run the Qwen perplexity check
 step() { echo "=== $(date "+%F %T") step: $*"; "$@"; local rc=$?; echo "=== $(date "+%F %T") step exit $rc: $*"; return $rc; }
 complete() {
@@ -21,12 +22,14 @@ cleanup() {  # planned cleanup: keep the pruning record, drop the ~16 GB pruned 
     && echo "=== $(date "+%F %T") deleted models/$1 (meta kept in logs/wanda_meta/)"
 }
 for m in $MODELS; do
-  dir="models/$m-wanda50mix"
-  if complete "$m" wanda50mix; then echo "=== $(date "+%F %T") skip (complete): $m wanda50mix"; continue; fi
-  if [ ! -f "$dir/wanda_meta.json" ]; then
-    step uv run python -u scripts/compression/wanda_prune.py --model "$m" --sparsity 0.5 --calib mix || continue
-  fi
-  step uv run python -u scripts/eval/run.py --model "$m" --variant wanda50mix --lang $LANGS && cleanup "$m-wanda50mix"
+  for pct in $PCTS; do
+    v="wanda${pct}mix"; dir="models/$m-$v"
+    if complete "$m" "$v"; then echo "=== $(date "+%F %T") skip (complete): $m $v"; continue; fi
+    if [ ! -f "$dir/wanda_meta.json" ]; then
+      step uv run python -u scripts/compression/wanda_prune.py --model "$m" --sparsity "0.$pct" --calib mix || continue
+    fi
+    step uv run python -u scripts/eval/run.py --model "$m" --variant "$v" --lang $LANGS && cleanup "$m-$v"
+  done
 done
 if [ "$PPLCHECK" = 1 ] && [ ! -f logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json ]; then
   step uv run python -u scripts/compression/wanda_prune.py --model qwen3-8b --sparsity 0.5 --no-save \

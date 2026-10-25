@@ -8,7 +8,7 @@ experiments:
     variants: [bf16, int8, nf4, wanda50, wanda25]
   exp1_calib:                    # Wanda calibration-language ablation: English C4 (exp1 wanda50) vs mixed en/ur/roman_ur
     models: [qwen3-8b, gemma-4-e4b, qalb-1.0-8b]
-    variants: [wanda50mix]
+    variants: [wanda50mix, wanda25mix]
   exp2:                          # distillation: students vs llama-3.1-8b bf16 (shared with exp1)
     models: [llama-3.1-minitron-4b-width, llama-3.1-minitron-4b-depth, llama-3.2-3b]
     variants: [bf16]
