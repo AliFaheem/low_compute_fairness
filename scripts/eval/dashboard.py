@@ -36,7 +36,7 @@ for f in $(ls -t logs/*.log 2>/dev/null | head -8); do
   echo "LOG|$f|$(stat -c %Y "$f")"
   echo "STEP|$(grep -a '^===' "$f" | tail -1)"
   echo "RUN|$(grep -a '^\[[^] ]*__' "$f" | tail -1)"
-  echo "ROWS|$(tail -c 400 "$f" | tr '\r' '\n' | grep -a 'rows/s\|block ' | tail -1)"
+  echo "ROWS|$(tail -c 300000 "$f" | tr '\r' '\n' | grep -a 'rows/s\|block ' | tail -1)"   # warnings can bury it
 done"""
 
 
