@@ -396,6 +396,17 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Machine 3: tmux `llama_p` waits for `ALIF prune DONE`, then runs the prune part (log `logs/llama_prune.log`, about 20:00–00:15). Llama is cached on both machines, so nothing is downloaded.
 - Commit `c94f9f8`.
 
+### 25 Oct 2026, 18:33: AWQ queued on Machine 2
+
+- New `scripts/compression/awq_quant.py`, run in the gptqmodel 7.7 venv (`/root/awq_test/.venv`): AWQ, 4-bit, group size 128, GEMM format.
+  - Calibration: 128 × 512 tokens, split evenly over en/ur/roman_ur (43/43/42). It is built from the documents of `logs/calibration/qalb-1.0-8b-wanda50mix.jsonl`, so AWQ sees the same text as the `wanda*mix` runs, and the same file for every model.
+  - After quantizing, it measures perplexity on wanda_prune's held-out windows (16 × 2048, seed 0), comparable with the `before` values in `logs/wanda_meta/`.
+  - Writes `models/<model>-awq/` (local) + `awq_meta.json`.
+- `run.py --variant awq` loads the checkpoint with `GPTQModel.load` (AWQ venv) and fails if no `QuantLinear` layers are found. New `exp1_awq` in `runs.yaml` (qwen3-8b, gemma-4-e4b, qalb-1.0-8b); `awq` paths in `models.yaml`. gptqmodel has definitions for gemma4, qwen3 and llama.
+- CPU check on Machine 2 passed: imports, calibration building for all 3 tokenizers, and run.py import under the AWQ venv. **Not yet tested on GPU.** Qwen runs first and serves as the test.
+- Machine 2: tmux `awq` (`scripts/eval/queues/awq_queue.sh`, log `logs/awq.log`) waits for `VAST2 ALL DONE` (about 19:20), then Qwen, Gemma, Qalb: quantize, score 4 languages, delete the copy (planned cleanup; meta kept in `logs/awq_meta/`). Estimate about 1–1.5 h per model, done about 23:00. All 3 models are cached on Machine 2, so nothing is downloaded.
+- Commit `446bf28`.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
