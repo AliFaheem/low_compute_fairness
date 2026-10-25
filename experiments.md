@@ -178,6 +178,30 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Ministral-3-3B is its cascade-distilled student, a possible Urdu-capable Exp 2 pair.
 - If renting a new instance: **filter on bandwidth price**, since about 50 GB must be downloaded again; then run setup, update `~/.ssh/config` Host `vast`, and run the queue.
 
+### 25 Oct 2026, 07:11: pilots of Ministral-3-8B-Base and Qalb-1.0-8B (machine `vast2`)
+
+- New machine `vast2`: Vast, direct SSH `89.221.67.136:15678` (Host `vast2` in `~/.ssh/config`).
+  - **The GPU is an RTX 3090 24 GB**, not the RTX 4080 Super 32 GB from the listing.
+  - Setup passed, with access to all 12 models.
+  - Queue `scripts/eval/queues/candidates_pilot.sh` with `PILOTS_ONLY=1`. The user wants Gemma finished on `vast2` only if the old machine stays offline.
+- Speeds (3090): Ministral en 33.5 / ur 20.0 / roman_ur 23.3 rows/s; Qalb en 35.9 / ur 15.7 / roman_ur 21.0. Loads (first download): Ministral 156 s, 17.8 GB; Qalb 137 s, 16.1 GB.
+- Results (500 items, BF16, letter scoring):
+
+| Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Mass | Picked slot 1/2/3 |
+|---|---:|---:|---:|---:|---:|---|
+| ministral-3-8b en | 53.6 | 22.8 | 85.4 | 66.4 | 0.75 | 34/27/38 |
+| ministral-3-8b ur | 45.6 | 20.9 | 71.1 | 10.8 | 0.39 | 5/59/36 |
+| ministral-3-8b roman_ur | 51.8 | 47.6 | 56.1 | 3.0 | 0.58 | 5/6/**89** |
+| qalb-1.0-8b en | 65.6 | 50.4 | 81.3 | 58.4 | 0.97 | – |
+| qalb-1.0-8b ur | 35.8 | 7.1 | 65.4 | 0.0 | 0.70 | **0**/19/81 |
+| qalb-1.0-8b roman_ur | 31.0 | 1.6 | 61.4 | 19.0 | 0.84 | 40/45/15 |
+
+- Findings:
+  - **Ministral:** fine in English (balanced letter choice). In Roman Urdu it says "C" 89% of the time, so its order agreement is 3% and its 47.6% ambiguous accuracy is an artifact. Urdu (71% disambiguated) is below Qwen (80) and Gemma (76). Its UrduMMLU advantage (likely the instruct model with generated answers) does not carry over to the base model with letter scoring. **Not recommended.**
+  - **Qalb vs its own base Llama-3.1-8B:** Urdu adaptation helps (disambiguated ur 65 vs 57, roman_ur 61 vs 45; label mass ur 0.70 vs 0.48, roman_ur 0.84 vs 0.59). But it inherits the dead `ا` slot in `ur` (0%, 81% `پ`), and almost never picks Unknown in ur/roman_ur (7% / 2%; 50% in en). It is a possible "Llama vs Urdu-adapted Llama" side study, with caveats.
+  - **Protocol issue:** the first Urdu label `ا` is almost never chosen by 3 model families (Llama, Qalb, Ministral; 0–5%). A lone `ا` is an unnatural answer token. Proposed test: Urdu with A/B/C labels (about 5 min per model), or answer-text scoring.
+- Recommendation: keep **Qwen3-8B + Gemma-4-E4B** as the main Exp 1 models; skip Ministral; Qalb optional; test Urdu labels.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
