@@ -67,6 +67,10 @@ models:
     revision: null
     adapter: {hf_id: large-traversaal/Alif-1.0-8B-Instruct, revision: 03d549fb1d23bef6315eeb54755c2fd260b589cc}
     base: llama-3.1-8b           # adapter declares unsloth/Meta-Llama-3.1-8B; tensors identical to meta-llama's
+    wanda50: {hf_id: models/alif-1.0-8b-wanda50, revision: null}
+    wanda25: {hf_id: models/alif-1.0-8b-wanda25, revision: null}
+    wanda50mix: {hf_id: models/alif-1.0-8b-wanda50mix, revision: null}
+    wanda25mix: {hf_id: models/alif-1.0-8b-wanda25mix, revision: null}
   ministral-3-8b:                # best small open model on UrduMMLU (~57%); multimodal checkpoint, run text-only
     hf_id: mistralai/Ministral-3-8B-Base-2512
     revision: d4883f9b36aa2e5d775730d3fdba3d30de51a8ef
