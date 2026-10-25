@@ -50,6 +50,27 @@ def calibration(tok, path, nsamples, seqlen):
     return samples, counts
 
 
+def keep_gemma4_position_embeddings():
+    """Gemma 4 fix (gptqmodel 7.7 + transformers 5.20): Gemma 4's rotary embedding needs a `layer_type` (sliding vs
+    full attention). gptqmodel's Gemma 4 definition already passes per-layer position embeddings into the replay
+    kwargs, but AWQ's scale search recomputes them with `rotary(x, pos)` and crashes. The library's own switch
+    `awq_preserve_explicit_position_embeddings` (used by its Cohere Compass definition) keeps the explicit ones."""
+    import importlib
+    import inspect
+    from gptqmodel.models.base import BaseQModel
+    patched = []
+    for name in ("gemma4", "gemma4_unified"):
+        try:
+            mod = importlib.import_module(f"gptqmodel.models.definitions.{name}")
+        except ImportError:
+            continue
+        for cls_name, cls in inspect.getmembers(mod, inspect.isclass):
+            if issubclass(cls, BaseQModel) and cls.__module__ == mod.__name__:
+                cls.awq_preserve_explicit_position_embeddings = True
+                patched.append(cls_name)
+    return patched
+
+
 def main():
     from gptqmodel import GPTQModel, QuantizeConfig
     from gptqmodel.quantization import FORMAT, METHOD
@@ -76,6 +97,9 @@ def main():
     calib, counts = calibration(tok, args.calib_file, args.nsamples, args.seqlen)
     print(f"calibration: {counts} x {args.seqlen} tokens from {args.calib_file}", flush=True)
 
+    patched = keep_gemma4_position_embeddings() if args.model.startswith("gemma-4") else []
+    if patched:
+        print(f"Gemma 4: keeping explicit per-layer position embeddings in AWQ replay ({', '.join(patched)})", flush=True)
     qc = QuantizeConfig(bits=args.bits, group_size=args.group_size, method=METHOD.AWQ, format=FORMAT.GEMM)
     t0 = time.time()
     # GPTQModel.load passes extra kwargs to the model constructor (no `revision`), so load the pinned snapshot by path.
@@ -115,6 +139,7 @@ def main():
                             "sha256": hashlib.sha256(open(args.calib_file, "rb").read()).hexdigest(),
                             "samples_per_source": counts, "seqlen": args.seqlen},
             "perplexity": ppl, "minutes": minutes,
+            "awq_preserve_explicit_position_embeddings": patched,
             "versions": {"gptqmodel": gptqmodel.__version__, "torch": torch.__version__,
                          "transformers": transformers.__version__},
             "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
