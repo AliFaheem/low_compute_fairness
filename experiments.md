@@ -362,6 +362,8 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - 15:04: user asked for **all experiments on Alif**. Added to `configs/runs.yaml` (`exp1` and `exp1_calib`) with local pruned paths in `models.yaml`. New `scripts/eval/queues/alif_full.sh` in two parts so two machines can share it: `PART=quant` (bf16, int8, nf4) and `PART=prune` (wanda50, wanda25, wanda50mix, wanda25mix).
 - Machine 1: tmux `alif_q` waits for `ALIF PILOT DONE`, then runs the quant part (log `logs/alif_full.log`, about 18:30–22:00). tmux `alif_p` waits for `ALIF quant DONE`, then runs the prune part (log `logs/alif_prune.log`, about 22:00–04:30). This is the fallback. If a third machine is rented, run `PART=prune` there and kill `alif_p` on Machine 1 before it starts.
 - Machine 2 was not used: it has no Llama base cached, and its disk (34 GB free) can't hold base + adapter + merged + one pruned copy.
+- 15:45: **Machine 3 (`vast3`, RTX 4080 Super 32 GB, ssh2.vast.ai:19875)** runs `PART=prune` (tmux `alif_p`, log `logs/alif_prune.log`). Its only model download is Llama-3.1-8B + the Alif adapter, and no other model goes there. Merged at 15:48 (224 layers, 2 tensors); wanda50 (C4) pruning started. Expected done about 21:30. Machine 1's `alif_p` fallback was removed.
+  - Two earlier machine-3 instances were dropped. The first was an RTX PRO 4500 Blackwell (sm_120), which needs a cu130 torch build. torch 2.14.1+cu130 worked there via `uv pip install --reinstall-package torch` plus `UV_NO_SYNC=1`, but the instance was replaced by the user. The second was an RTX 3090 with downloads at about 0.25 MB/s, so it was unusable. Check download speed before setting up a new Vast machine.
 
 ### Pilot results so far (500 items each, BF16)
 
