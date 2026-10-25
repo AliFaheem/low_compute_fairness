@@ -17,7 +17,7 @@ models:
   qwen3-8b:
     hf_id: Qwen/Qwen3-8B-Base
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
-    wanda50: null
+    wanda50: {hf_id: models/qwen3-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local (bandwidth)
   gemma-4-e4b:
     hf_id: google/gemma-4-E4B
     revision: 411aa17b749aa952df1359d2dcea73917a544d9a
@@ -47,3 +47,4 @@ models:
   smoke-qwen3-0.6b:
     hf_id: Qwen/Qwen3-0.6B-Base
     revision: da87bfb608c14b7cf20ba1ce41287e8de496c0cd
+    wanda50: {hf_id: models/smoke-qwen3-0.6b-wanda50, revision: null}   # local output of the CPU Wanda test

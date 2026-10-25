@@ -90,6 +90,8 @@ Known problems in the authors' code. Do not copy them:
 
 ## Experiment plan
 
+**`experiments.md` is the running log** of runs, machines, results and decisions. Read it at the start of a session. Append to it after every run, finding or decision: newest at the bottom of the Log, and keep "Current state" up to date.
+
 The deck is a starting point, not a spec: choices change for practical reasons (cost, tooling, time). Plan agreed 25 Oct 2026.
 
 **Models are base (pretrained), not instruct.** Official base teacher→student pairs (NVIDIA Minitron, Llama 3.2 base) had no separate post-training, so distillation comparisons are clean. No fine-tuning or distillation training by us.
@@ -144,7 +146,8 @@ How to set up a machine and run is in `README.md`. Key facts for code:
 - Results are stored in the private HF dataset `HF_RESULTS_REPO` (`scripts/eval/hub.py`, CommitScheduler every 5 min + final upload), mirroring `results/runs/` and `results/smoke/`. Not in git: the GitHub repo is public. A run with no local files fetches what HF has first, so runs resume across machines. A per-run `fcntl` lock stops two processes scoring the same run (they would duplicate rows).
 - `meta.json` records model revision, quantization config, linear-layer counts (int8/nf4 fail if no bnb layers), memory footprint, versions, GPU, host, git commit, data and prompt hashes, and one entry per session. A run is `complete` when it has every item in all 3 orders.
 - Environment: Python 3.12, torch 2.14.1 (Linux: CUDA 12.6 build, drivers >= 525), transformers 5.20.2, bitsandbytes (Linux only). `smoke-qwen3-0.6b` in `configs/models.yaml` is for CPU smoke tests only.
-- Not built yet: `scripts/compression/wanda_prune.py` (set `wanda50` per model in `configs/models.yaml` once pushed), and the full metrics/analysis step.
+- `scripts/compression/wanda_prune.py`: Wanda, per-output-row 50% (or `--structure 2:4`), blocks pruned in order with block l's input norms collected through already-pruned blocks 0..l-1. Statistics come from full-model forwards stopped after block l (hooks + exception), so it needs no per-architecture code; only decoder blocks of the language model are pruned. Calibration: C4 en train shard 0, 128 × 2048 tokens, seed 0 (paper setting); C4 validation perplexity before/after as a sanity check. Saves to `models/` (git-ignored), `--push` uploads to a private HF model repo and prints the `wanda50` entry for `configs/models.yaml`. Tested on CPU with `smoke-qwen3-0.6b` (16 × 256 calibration): exactly 50% per row, C4 perplexity 21.3 → 33.6, scores through `run.py`; its `wanda50` entry points to the local folder.
+- Not built yet: the full metrics/analysis step.
 
 ### Phases
 

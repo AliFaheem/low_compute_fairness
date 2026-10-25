@@ -6,3 +6,4 @@ results/
 credentials.json
 .venv/
 __pycache__/
+models/
