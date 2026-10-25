@@ -4,11 +4,12 @@ Running record of what was run, where, what came out, and what was decided. Meas
 
 ## Current state
 
-- **Phase:** 3, on **two machines** since 25 Oct 10:10 (see the ~10:10 entry):
-  - **Machine 1 `vast`** (3090 Ti): Gemma Wanda (4 languages) → Qwen and Gemma `wanda50mix` → Llama `ur_abc` pilot; until about 14:30.
-  - **Machine 2 `vast2`** (3090): Qwen wanda25 `ur_abc` → Qalb full Exp 1 → Qalb `wanda50mix`; until about 18:30.
+- **Phase:** 3, on **two machines** (see the ~10:10 and 11:06 entries):
+  - **Machine 1 `vast`** (3090 Ti): Gemma wanda25 `ur_abc` → Qwen and Gemma `wanda50mix`/`wanda25mix` → Qwen perplexity check → Llama `ur_abc` pilot (`logs/old.log`, about 16:00) → then Qalb `wanda50mix`/`wanda25mix` (tmux `qalbcalib`, `logs/qalbcalib.log`, about 18:30).
+  - **Machine 2 `vast2`** (3090): Qalb full Exp 1, 5 variants × 4 languages (`logs/qalb.log`, about 17:30); its calibration step is disabled (`logs/calib_disabled`).
+  - Main Exp 1 for Qwen + Gemma is 39/40 done.
 - **To check progress in a new session:**
-  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
+  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/qalbcalib.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
@@ -294,6 +295,12 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Then checked all 67 locally complete runs on both machines against HF: none missing.
   - Fix (commit `28b9495`): `run.py` now calls `hub.ensure_uploaded()` for locally complete runs, so a run finished offline is uploaded next time.
 - **Main Exp 1 (Qwen + Gemma × 5 variants × 4 languages): 39/40 done**; only Gemma wanda25 `ur_abc` remains (running).
+
+### 25 Oct 2026, 11:06: rebalance, Qalb calibration moves to Machine 1
+
+- User approved option B (no third machine): **Qalb `wanda50mix`/`wanda25mix` move from Machine 2 to Machine 1**, so the overall finish is about 18:30 instead of about 20:00.
+  - `calib_queue.sh` now exits immediately if `logs/calib_disabled` exists (commit `0a26507`). The marker was created on **Machine 2 only**, so Machine 2's `next` watcher finishes after Qalb's main runs (about 17:30).
+  - Machine 1: tmux `qalbcalib` waits for `OLD MACHINE ALL DONE` in `logs/old.log`, then runs `MODELS=qalb-1.0-8b PPLCHECK=0 calib_queue.sh` (log `logs/qalbcalib.log`; downloads Qalb, 16 GB). Ends with `M1 QALB CALIB DONE`, about 18:30.
 
 ### Pilot results so far (500 items each, BF16)
 
