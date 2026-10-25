@@ -240,6 +240,14 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Decision (user): keep English C4 for all pruning** (Qwen done; Gemma and Qalb to follow). It is consistent, standard and comparable to the literature.
 - **To do later:** calibration-language ablation, e.g. re-prune Qwen at 50% with English + Urdu web text (mC4/CulturaX, never PakBBQ) and compare bias. Until then, state in the paper that pruning-vs-quantization differences in Urdu may partly reflect the English-only calibration (quantization uses no calibration data).
 
+### 25 Oct 2026, 09:35: status on `vast2`, 30/60 runs done
+
+- Done since 07:29 (all exit 0): `ur_abc` for Qwen bf16/nf4/int8 and Gemma bf16/nf4/int8. Timings on the RTX 3090: Qwen bf16 `ur_abc` 25 min, nf4 23 min, int8 18 min; Gemma about 9–11 min each.
+- Qwen re-pruned to 50% on `vast2` (21.1 min): C4 perplexity 7.163 → **8.556**, vs **8.566** for the original prune on the old machine. So it is essentially the same model but not bit-identical (different GPU / numerics).
+  - **Caveat for analysis:** Qwen wanda50/wanda25 `ur_abc` use the re-pruned copies; their en/ur/roman_ur runs used the originals.
+- Running: Qwen wanda50 `ur_abc`. Then Qwen 25% re-prune + `ur_abc`, then Gemma 50%/25% (4 languages each). `exp1` expected done about 13:00; then the `qalb` queue (about 19:00).
+- Disk 85/109 GB (Gemma now downloaded, plus one pruned copy).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
