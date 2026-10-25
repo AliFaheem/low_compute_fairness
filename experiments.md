@@ -5,7 +5,7 @@ Running record of what was run, where, what came out, and what was decided. **Re
 ## Current state
 
 - **Phase:** 3 for Qwen3-8B: full Exp 1 queue running since 25 Oct 01:02 (tmux `qwen-exp1`, log `logs/qwen-exp1.log`). Pilots are done for all 3 models.
-- **Next in line:** tmux `after-qwen` (log `logs/after-qwen.log`) starts when the Qwen queue logs `QUEUE DONE`. It runs Qwen wanda75, then all Gemma variants including wanda50 and wanda75.
+- **Next in line:** tmux `after-qwen` (log `logs/after-qwen.log`) starts when the Qwen queue logs `QUEUE DONE`. It runs Qwen wanda25, then all Gemma variants including wanda50 and wanda25.
 - **To check progress in a new session:**
   - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/qwen-exp1.log /root/low_compute_fairness/logs/after-qwen.log'` lists steps (Qwen-queue exit codes are unreliable, see 01:30);
   - `uv run python scripts/eval/status.py` shows the grid.
@@ -129,6 +129,13 @@ Running record of what was run, where, what came out, and what was decided. **Re
   5. prunes Gemma to 75% → runs wanda75 → deletes.
 - **Logging bug in `qwen-exp1`:** its `step exit N` lines always say 0, because `$?` is read after `$(date)` in the same echo. Judge Qwen-queue steps by `complete:` lines or `results/runs/*/meta.json` status instead. The `after-qwen` queue records exit codes correctly.
 - New estimate: Qwen queue 7–9 h, then `after-qwen` about 9.5–12 h (Qwen 75% about 3–3.75 h; Gemma about 6.5–8 h, since each Gemma prune is about 1.5–2 h). Total about 17–21 h, about $4.5–6 GPU at ~$0.25/h.
+
+### 25 Oct 2026, 01:33: Wanda 75% replaced by Wanda 25%
+
+- The user meant a 25% drop, so the second pruning level is **Wanda 25%** (light pruning), not 75% (commit `cb95956`). Nothing at 75% had run.
+- `configs`: variant `wanda25`, local paths `models/<model>-wanda25`. The Exp 1 variants are now `[bf16, int8, nf4, wanda50, wanda25]` (60-run grid).
+- `after-qwen` was restarted with the updated `scripts/eval/queues/after_qwen_queue.sh`: Qwen 25% after the Qwen queue, and Gemma 50% + 25%. The pruning cost per level is the same as before, so the time estimate is unchanged at about 17–21 h total.
+- Progress at 01:33: Qwen bf16 `en` and `ur` complete; `roman_ur` running.
 
 ### Pilot results so far (500 items each, BF16)
 
