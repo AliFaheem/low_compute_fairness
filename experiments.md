@@ -4,9 +4,7 @@ Running record of what was run, where, what came out, and what was decided. **Re
 
 ## Current state
 
-- **Phase:** 3, full Exp 1 runs for Qwen3-8B and Gemma-4-E4B (letter scoring), one queue: tmux `exp1`, log `logs/exp1.log`, script `scripts/eval/queues/exp1_queue.sh`.
-  - Order: Qwen bf16 → Gemma bf16 → Qwen nf4, int8 → Gemma nf4, int8 → Qwen wanda50, wanda25 → Gemma wanda50, wanda25.
-  - Started 25 Oct 01:42; estimated 17–21 h in total.
+- **Phase:** 3. Exp 1 is 24/30 done; **the Vast instance went offline at ~06:40 on 25 Oct** (see Log). Remaining: Gemma wanda50 and wanda25, then pilots of Qalb-1.0-8B and Ministral-3-8B-Base.
 - **To check progress in a new session:**
   - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log'` lists steps, exit codes and finished runs;
   - `uv run python scripts/eval/status.py` shows the grid.
@@ -166,6 +164,19 @@ Running record of what was run, where, what came out, and what was decided. **Re
   - wanda25 → 7.252 (+1%), exactly 25% of pruned-layer weights zero;
   - wanda50 → 8.566 (+20%), exactly 50% zero.
 - Pruned copies are deleted after their runs; disk steady at 54/109 GB.
+
+### 25 Oct 2026, ~06:40: Vast host went offline
+
+- During Gemma's Wanda 50% pruning (last seen at block 39/42, 06:35), SSH to the instance first timed out and then was refused. The user confirmed in the Vast console that the machine went offline (host-side).
+- Safe:
+  - all 24 completed Exp 1 runs on HF `alifaheem94/pakbbq-results`: Qwen3-8B bf16/nf4/int8/wanda50/wanda25 and Gemma-4-E4B bf16/nf4/int8, 3 languages each;
+  - code and queue scripts on GitHub, branch `setup/initial`.
+- At risk (instance disk only): cached models, the partial Gemma 50% prune, and `logs/wanda_meta/*.json`. Key Qwen Wanda perplexities are already recorded in the 06:34 entry.
+- Remaining Exp 1: Gemma wanda50 and wanda25 (6 runs). `exp1_queue.sh` skips finished runs, so re-running it on any machine does only these.
+- Decided next (user): pilot **Qalb-1.0-8B-Instruct** (`enstazao/Qalb-1.0-8B-Instruct`, a full fine-tune of Llama-3.1-8B for Urdu) and **Ministral-3-8B-Base-2512** (best small open model on UrduMMLU, 57%) on 500 items × 3 languages after Gemma.
+  - Qalb is instruction-tuned, so consider a chat-template option.
+  - Ministral-3-3B is its cascade-distilled student, a possible Urdu-capable Exp 2 pair.
+- If renting a new instance: **filter on bandwidth price**, since about 50 GB must be downloaded again; then run setup, update `~/.ssh/config` Host `vast`, and run the queue.
 
 ### Pilot results so far (500 items each, BF16)
 
