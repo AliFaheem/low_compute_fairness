@@ -1,7 +1,7 @@
 """Write a local progress dashboard: CSVs of the run grid and the GPU machines, plus a static HTML page.
 
     uv run python scripts/eval/dashboard.py                 # update once
-    uv run python scripts/eval/dashboard.py --every 600     # update every 10 minutes (Ctrl-C to stop)
+    uv run python scripts/eval/dashboard.py --every 60      # update every minute (Ctrl-C to stop)
     open results/dashboard/index.html
 
 Grid status comes from every run's meta.json in HF_RESULTS_REPO (small files). The live percentage of the run each

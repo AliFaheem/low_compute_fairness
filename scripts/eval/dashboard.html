@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="60">
+<meta http-equiv="refresh" content="30">
 <title>Experiment Progress</title>
 <style>
   :root {
@@ -100,7 +100,7 @@ const D = window.DASH;
 if (!D) {
   document.getElementById("updated").textContent = "No data.js yet: run  uv run python scripts/eval/dashboard.py";
 } else {
-  document.getElementById("updated").textContent = "Updated " + D.updated + " · page reloads every minute";
+  document.getElementById("updated").textContent = "Updated " + D.updated + " · page reloads every 30 s";
   const grid = parseCSV(D.progress), machines = parseCSV(D.machines), extras = parseCSV(D.extras);
   const active = grid.filter(r => r.state !== "on hold");
   const done = active.filter(r => r.state === "done").length;
