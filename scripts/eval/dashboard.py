@@ -31,7 +31,8 @@ OUT = "results/dashboard"
 REMOTE = r"""cd /root/low_compute_fairness 2>/dev/null || exit 3
 echo "GPU|$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader 2>/dev/null | head -1)"
 echo "TMUX|$(tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' ')"
-for f in $(ls -t logs/*.log 2>/dev/null | head -3); do
+for f in $(ls -t logs/*.log 2>/dev/null | head -8); do
+  tail -n 1 "$f" | grep -q 'waiting for' && continue   # idle watchers are not the running queue
   echo "LOG|$f|$(stat -c %Y "$f")"
   echo "STEP|$(grep -a '^===' "$f" | tail -1)"
   echo "RUN|$(grep -a '^\[[^] ]*__' "$f" | tail -1)"
@@ -67,7 +68,7 @@ def machine_status(host, name):
             logs.append({"log": path, "mtime": int(mtime or 0)})
         elif logs and key in ("STEP", "RUN", "ROWS"):
             logs[-1][key] = val.strip()
-    # The active log is the newest one; waiting watchers write rarely, so it is the running queue.
+    # The active log is the newest one that is not an idle watcher.
     live = None
     if logs:
         cur = logs[0]
