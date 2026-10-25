@@ -6,8 +6,9 @@
 # the wanda_meta.json of each copy is kept in logs/wanda_meta/.
 #
 #   tmux new-session -d -s exp1 "bash scripts/eval/queues/exp1_queue.sh 2>&1 | tee -a logs/exp1.log"
+#   LANGS="en ur roman_ur ur_abc" bash scripts/eval/queues/exp1_queue.sh   # also the Urdu A/B/C variant
 cd /root/low_compute_fairness
-LANGS="en ur roman_ur"
+LANGS="${LANGS:-en ur roman_ur}"   # e.g. LANGS="en ur roman_ur ur_abc"
 step() { echo "=== $(date "+%F %T") step: $*"; "$@"; local rc=$?; echo "=== $(date "+%F %T") step exit $rc: $*"; return $rc; }
 complete() {  # all languages of model $1, variant $2 finished (per their meta.json)
   for l in $LANGS; do

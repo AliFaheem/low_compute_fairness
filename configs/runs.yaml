@@ -1,6 +1,6 @@
 # The experiment grid. One run = (model, variant, language) and writes results/runs/<model>__<variant>__<lang>/.
 
-languages: [en, ur, roman_ur]
+languages: [en, ur, roman_ur, ur_abc]   # ur_abc = Urdu prompt with Latin A/B/C labels (robustness / candidate main)
 
 experiments:
   exp1:                          # quantization and pruning, each variant vs its own bf16
