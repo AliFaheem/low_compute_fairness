@@ -4,12 +4,16 @@ Running record of what was run, where, what came out, and what was decided. Meas
 
 ## Current state
 
-- **Phase:** 3, on **two machines** (see the ~10:10 and 11:06 entries):
-  - **Machine 1 `vast`** (3090 Ti): Gemma wanda25 `ur_abc` → Qwen and Gemma `wanda50mix`/`wanda25mix` → Qwen perplexity check → Llama `ur_abc` pilot (`logs/old.log`, about 16:00) → then Qalb `wanda50mix`/`wanda25mix` (tmux `qalbcalib`, `logs/qalbcalib.log`, about 18:30).
-  - **Machine 2 `vast2`** (3090): Qalb full Exp 1, 5 variants × 4 languages (`logs/qalb.log`, about 17:30); its calibration step is disabled (`logs/calib_disabled`).
-  - Main Exp 1 for Qwen + Gemma is 39/40 done.
+- **Phase:** 3, on **two machines**. Main Exp 1 for Qwen + Gemma is **done (40/40)**.
+  - **Machine 1 `vast`** (3090 Ti):
+    1. calibration ablation for Qwen and Gemma, then the Qwen perplexity check and the Llama `ur_abc` pilot (`logs/old.log`, about 16:00);
+    2. Qalb calibration (`logs/qalbcalib.log`, about 18:30);
+    3. **Llama-3.1-8B full Exp 1** (`logs/llama.log`, about 00:30).
+  - **Machine 2 `vast2`** (3090):
+    1. Qalb full Exp 1 (`logs/qalb.log`, about 17:30);
+    2. **Exp 2 students** (`logs/exp2.log`, about 19:30).
 - **To check progress in a new session:**
-  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/qalbcalib.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/calib.log'`;
+  - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/qalbcalib.log /root/low_compute_fairness/logs/llama.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/exp2.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
   - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
@@ -322,6 +326,16 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Gemma-like architectures need extra validation;
   - a noise floor is still needed (BF16 rerun or order-flip rate) to judge small flip rates;
   - wait for the Llama `ur_abc` pilot and Qalb before choosing more models.
+
+### 25 Oct 2026, 11:30: next models, Llama full Exp 1 + Exp 2 students; Ministral dropped
+
+- **Ministral-3-8B dropped.** Its pilot already showed position-driven Roman Urdu (89% "C", 3% order agreement; Roman Urdu already uses A/B/C, so `ur_abc` cannot help) and weaker Urdu than Qwen/Gemma. A re-test was suggested and rejected: the evidence is sufficient.
+- **Priority 1: Llama-3.1-8B full Exp 1** (5 variants × en/ur/roman_ur/ur_abc). Needed as the base for the Qalb comparison and as the Exp 2 teacher. Local `wanda50`/`wanda25` paths added (commit `a8eb240`).
+  - Machine 1: tmux `llama` waits for `M1 QALB CALIB DONE`, then runs `MODELS=llama-3.1-8b model_queue.sh` (log `logs/llama.log`; Llama is cached there). About 6 h, so it ends late tonight.
+- **Priority 2: Exp 2 students** (Llama-3.2-3B, Minitron-4B-Width, Minitron-4B-Depth; BF16 × 4 languages).
+  - Machine 2: tmux `exp2` waits for `VAST2 ALL DONE`, then runs `run.py` for each (log `logs/exp2.log`, ends `EXP2 DONE`). About 1.5–2 h plus about 25 GB of downloads.
+- Not now: Qwen3.5-9B (hybrid architecture plus vision; risky for bnb/Wanda), Mistral-NeMo-12B pair (needs ≥40 GB), Gemma-3-12B (too big for BF16).
+- Still to do when a GPU frees: Gemma nf4 check, and a noise floor (BF16 rerun).
 
 ### Pilot results so far (500 items each, BF16)
 
