@@ -25,6 +25,7 @@ import gzip
 import json
 import os
 import random
+import re
 import sys
 import time
 
@@ -36,10 +37,58 @@ import common  # noqa: E402
 C4_REPO = "allenai/c4"
 C4_TRAIN = "en/c4-train.00000-of-01024.json.gz"
 C4_VALID = "en/c4-validation.00000-of-00008.json.gz"
+# FineWeb-2 Urdu: urd_Arab = Urdu script, urd_Latn = Roman Urdu. The urd_Arab train shard is 4.8 GB, so
+# Urdu script uses its 71 MB test shard, split into disjoint calibration / perplexity halves.
+FW2_REPO = "HuggingFaceFW/fineweb-2"
+FW2_FILES = {"arab_test": "data/urd_Arab/test/000_00000.parquet",
+             "latn_train": "data/urd_Latn/train/000_00000.parquet",
+             "latn_test": "data/urd_Latn/test/000_00000.parquet"}
+ROMAN_URDU_WORDS = {"hai", "hain", "ka", "ki", "ke", "aur", "mein", "main", "nahi", "nahin", "ko", "se", "ye", "yeh",
+                    "wo", "woh", "kya", "bhi", "tha", "thi", "kar", "ho", "jo", "par", "sath", "apne"}
 
 
 class StopForward(Exception):
     pass
+
+
+def fw2_docs(key):
+    """Texts of one FineWeb-2 Urdu shard; Roman Urdu keeps docs with >= 15% Roman Urdu function words."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import hf_hub_download
+    texts = pq.read_table(hf_hub_download(FW2_REPO, FW2_FILES[key], repo_type="dataset"), columns=["text"]) \
+        .column("text").to_pylist()
+    if key.startswith("latn"):
+        def ratio(s):
+            w = re.findall(r"[a-zA-Z]+", s.lower())
+            return sum(x in ROMAN_URDU_WORDS for x in w) / max(len(w), 1)
+        texts = [t for t in texts if ratio(t) >= 0.15]
+    return texts
+
+
+def packed_windows(tok, docs, n, seqlen, seed):
+    """n seqlen-token windows from shuffled docs joined with EOS (Urdu web docs are often short)."""
+    rng = random.Random(seed)
+    docs = docs[:]
+    rng.shuffle(docs)
+    buf, out = [], []
+    eos = tok.eos_token_id if tok.eos_token_id is not None else 0
+    for d in docs:
+        buf += tok(d, add_special_tokens=False).input_ids + [eos]
+        while len(buf) >= seqlen and len(out) < n:
+            out.append(torch.tensor([buf[:seqlen]]))
+            buf = buf[seqlen:]
+        if len(out) == n:
+            return out
+    raise SystemExit(f"Not enough text for {n} windows of {seqlen} tokens (got {len(out)})")
+
+
+def urdu_split(seed):
+    """Urdu-script docs split into disjoint calibration and perplexity pools."""
+    docs = fw2_docs("arab_test")
+    idx = list(range(len(docs)))
+    random.Random(seed).shuffle(idx)
+    half = len(idx) // 2
+    return [docs[i] for i in idx[:half]], [docs[i] for i in idx[half:]]
 
 
 def c4_windows(tok, path, n, seqlen, seed):
@@ -135,11 +184,16 @@ def main():
     ap.add_argument("--structure", choices=["unstructured", "2:4"], default="unstructured")
     ap.add_argument("--nsamples", type=int, default=128)
     ap.add_argument("--seqlen", type=int, default=2048)
-    ap.add_argument("--eval-samples", type=int, default=16, help="C4 validation windows for perplexity (0 = skip)")
+    ap.add_argument("--eval-samples", type=int, default=16, help="windows per language for perplexity (0 = skip)")
+    ap.add_argument("--calib", choices=["c4", "mix"], default="c4",
+                    help="c4: English C4 (paper default); mix: 1/3 C4 en + 1/3 FineWeb-2 Urdu + 1/3 Roman Urdu")
+    ap.add_argument("--eval-langs", nargs="+", default=["en", "ur", "roman_ur"],
+                    help="perplexity languages; ur/roman_ur use FineWeb-2 held-out text and never fail the run")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--out", help="output dir (default models/<model>-wanda<pct>)")
     ap.add_argument("--push", metavar="HF_REPO", help="upload to this private HF model repo")
+    ap.add_argument("--no-save", action="store_true", help="only measure (write wanda_meta.json, not the weights)")
     args = ap.parse_args()
     if args.structure == "2:4":
         args.sparsity = 0.5
@@ -147,7 +201,8 @@ def main():
     from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer
 
     spec = common.load_models()["models"][args.model]
-    tag = f"wanda{int(args.sparsity * 100)}" + ("-2of4" if args.structure == "2:4" else "")
+    tag = f"wanda{int(args.sparsity * 100)}" + ("-2of4" if args.structure == "2:4" else "") \
+        + ("mix" if args.calib == "mix" else "")
     out = args.out or os.path.join("models", f"{args.model}-{tag}")
     t0 = time.time()
     tok = AutoTokenizer.from_pretrained(spec["hf_id"], revision=spec["revision"])
@@ -158,10 +213,35 @@ def main():
         model = AutoModelForImageTextToText.from_pretrained(spec["hf_id"], **kw)
     model.eval()
 
-    calib = c4_windows(tok, C4_TRAIN, args.nsamples, args.seqlen, args.seed)
-    evals = c4_windows(tok, C4_VALID, args.eval_samples, args.seqlen, args.seed) if args.eval_samples else []
-    ppl_before = perplexity(model, evals, args.device) if evals else None
-    print(f"Loaded {args.model}; C4 perplexity before: {ppl_before}", flush=True)
+    ur_calib_pool = ur_eval_pool = None
+    if args.calib == "mix":
+        ur_calib_pool, ur_eval_pool = urdu_split(args.seed)
+        n_en = args.nsamples - 2 * (args.nsamples // 3)
+        calib = (c4_windows(tok, C4_TRAIN, n_en, args.seqlen, args.seed)
+                 + packed_windows(tok, ur_calib_pool, args.nsamples // 3, args.seqlen, args.seed)
+                 + packed_windows(tok, fw2_docs("latn_train"), args.nsamples // 3, args.seqlen, args.seed))
+        calib_record = {"mix": {"en": [C4_REPO, C4_TRAIN, n_en],
+                                "ur": [FW2_REPO, FW2_FILES["arab_test"] + " (calibration half)", args.nsamples // 3],
+                                "roman_ur": [FW2_REPO, FW2_FILES["latn_train"] + " (filtered)", args.nsamples // 3]}}
+    else:
+        calib = c4_windows(tok, C4_TRAIN, args.nsamples, args.seqlen, args.seed)
+        calib_record = {"dataset": C4_REPO, "file": C4_TRAIN}
+
+    evals = {}
+    if args.eval_samples:
+        evals["en"] = c4_windows(tok, C4_VALID, args.eval_samples, args.seqlen, args.seed)
+        for lang in [l for l in args.eval_langs if l != "en"]:
+            try:  # extra languages are best-effort: never let them fail the pruning
+                if lang == "ur":
+                    pool = ur_eval_pool if ur_eval_pool is not None else urdu_split(args.seed)[1]
+                else:
+                    pool = fw2_docs("latn_test")
+                evals[lang] = packed_windows(tok, pool, args.eval_samples, args.seqlen, args.seed)
+            except Exception as e:
+                print(f"  perplexity for {lang} skipped: {e}", flush=True)
+    ppl = {lang: {"before": perplexity(model, w, args.device)} for lang, w in evals.items()}
+    ppl_before = ppl.get("en", {}).get("before")
+    print(f"Loaded {args.model}; perplexity before: { {l: v['before'] for l, v in ppl.items()} }", flush=True)
 
     blocks_name, blocks = decoder_blocks(model)
     layers = {}
@@ -172,15 +252,17 @@ def main():
             layers[f"{blocks_name}.{i}.{name}"] = round(zeros / total, 4)
         print(f"  block {i + 1}/{len(blocks)}: pruned {len(linears)} linear layers", flush=True)
 
-    ppl_after = perplexity(model, evals, args.device) if evals else None
+    for lang, w in evals.items():
+        ppl[lang]["after"] = perplexity(model, w, args.device)
+    ppl_after = ppl.get("en", {}).get("after")
     n_params = sum(p.numel() for p in model.parameters())
     n_pruned_layer_params = sum(m.weight.numel() for b in blocks for m in b.modules() if isinstance(m, torch.nn.Linear))
     zeros_total = sum(int((m.weight == 0).sum()) for b in blocks for m in b.modules() if isinstance(m, torch.nn.Linear))
     meta = {
         "source_model": spec["hf_id"], "source_revision": spec["revision"], "method": "wanda",
         "sparsity": args.sparsity, "structure": args.structure,
-        "calibration": {"dataset": C4_REPO, "file": C4_TRAIN, "nsamples": args.nsamples, "seqlen": args.seqlen,
-                        "seed": args.seed},
+        "calibration": dict(calib_record, kind=args.calib, nsamples=args.nsamples, seqlen=args.seqlen, seed=args.seed),
+        "perplexity": {lang: dict(v, windows=args.eval_samples, seqlen=args.seqlen) for lang, v in ppl.items()},
         "c4_validation_perplexity": {"before": ppl_before, "after": ppl_after, "windows": args.eval_samples,
                                      "seqlen": args.seqlen},
         "pruned_blocks": f"{blocks_name} ({len(blocks)} blocks)",
@@ -193,8 +275,9 @@ def main():
         "versions": {"torch": torch.__version__, "transformers": __import__("transformers").__version__},
     }
     os.makedirs(out, exist_ok=True)
-    model.save_pretrained(out)
-    tok.save_pretrained(out)
+    if not args.no_save:
+        model.save_pretrained(out)
+        tok.save_pretrained(out)
     json.dump(dict(meta, layers=layers), open(os.path.join(out, "wanda_meta.json"), "w"), indent=1)
     print(json.dumps(meta, indent=1))
     print(f"Saved to {out}")
