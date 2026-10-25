@@ -6,6 +6,7 @@ variants:
   int8: {quantization: int8}     # bitsandbytes LLM.int8(), applied at load time
   nf4: {quantization: nf4}       # bitsandbytes 4-bit NormalFloat, applied at load time
   wanda50: {pruned: wanda50}     # Wanda 50% unstructured; loaded from the model's `wanda50` repo
+  wanda75: {pruned: wanda75}     # Wanda 75% unstructured (heavy pruning; expect large degradation)
 
 models:
   # Exp 1: quantization and pruning
@@ -18,10 +19,12 @@ models:
     hf_id: Qwen/Qwen3-8B-Base
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
     wanda50: {hf_id: models/qwen3-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local (bandwidth)
+    wanda75: {hf_id: models/qwen3-8b-wanda75, revision: null}
   gemma-4-e4b:
     hf_id: google/gemma-4-E4B
     revision: 411aa17b749aa952df1359d2dcea73917a544d9a
     wanda50: {hf_id: models/gemma-4-e4b-wanda50, revision: null}   # pruned on the Vast machine, kept local (bandwidth)
+    wanda75: {hf_id: models/gemma-4-e4b-wanda75, revision: null}
 
   # Exp 2: distilled students of llama-3.1-8b (bf16 only)
   llama-3.1-minitron-4b-width:

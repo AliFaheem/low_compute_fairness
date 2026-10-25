@@ -5,7 +5,7 @@ languages: [en, ur, roman_ur]
 experiments:
   exp1:                          # quantization and pruning, each variant vs its own bf16
     models: [llama-3.1-8b, qwen3-8b, gemma-4-e4b]
-    variants: [bf16, int8, nf4, wanda50]
+    variants: [bf16, int8, nf4, wanda50, wanda75]
   exp2:                          # distillation: students vs llama-3.1-8b bf16 (shared with exp1)
     models: [llama-3.1-minitron-4b-width, llama-3.1-minitron-4b-depth, llama-3.2-3b]
     variants: [bf16]

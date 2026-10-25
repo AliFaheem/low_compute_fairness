@@ -43,10 +43,10 @@ def git_state():
 
 
 def model_source(spec, variant):
-    if variant == "wanda50":
-        src = spec.get("wanda50")
+    if variant.startswith("wanda"):  # wanda50, wanda75, ...: pruned copy listed under that key
+        src = spec.get(variant)
         if not src:
-            raise SystemExit(f"{spec['hf_id']}: no wanda50 checkpoint in configs/models.yaml yet")
+            raise SystemExit(f"{spec['hf_id']}: no {variant} checkpoint in configs/models.yaml yet")
         return src["hf_id"], src["revision"]
     return spec["hf_id"], spec["revision"]
 
