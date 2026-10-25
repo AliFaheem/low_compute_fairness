@@ -31,6 +31,22 @@ def fetch_run(name, out_dir, results_root="results"):
     snapshot_download(name, repo_type="dataset", local_dir=results_root, allow_patterns=[f"{rel}/*"])
 
 
+def ensure_uploaded(name, out_dir, results_root="results"):
+    """A locally complete run that the dataset does not have as complete (e.g. scored while offline) is uploaded."""
+    import json
+    from huggingface_hub import hf_hub_download
+    rel = os.path.relpath(out_dir, results_root)
+    try:
+        remote = json.load(open(hf_hub_download(name, f"{rel}/meta.json", repo_type="dataset", force_download=True)))
+        if remote.get("status") == "complete":
+            return
+    except Exception:
+        pass
+    HfApi().upload_folder(repo_id=name, repo_type="dataset", folder_path=out_dir, path_in_repo=rel,
+                          allow_patterns=["meta.json", "preds.jsonl"], commit_message=f"Upload {rel} (complete locally)")
+    print(f"  uploaded {rel}: complete locally but not in {name}", flush=True)
+
+
 def fetch_meta(name, results_root="results"):
     """Download every run's meta.json (small), for status across machines."""
     snapshot_download(name, repo_type="dataset", local_dir=results_root, allow_patterns=["runs/*/meta.json"])

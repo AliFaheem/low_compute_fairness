@@ -313,6 +313,10 @@ def main():
                 if not os.path.exists(os.path.join(dirs[l], "preds.jsonl")):
                     hub.fetch_run(repo, dirs[l])  # finished or partial on another machine
         todo = [l for l in langs if not is_complete(dirs[l])]
+        if repo:
+            for l in langs:
+                if l not in todo:
+                    hub.ensure_uploaded(repo, dirs[l])  # e.g. finished while the machine was offline
         if not todo:
             print(f"{model_key} {variant}: all requested languages complete")
             continue
