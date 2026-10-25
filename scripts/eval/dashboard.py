@@ -17,6 +17,7 @@ import argparse
 import csv
 import io
 import json
+import multiprocessing
 import os
 import re
 import subprocess
@@ -28,6 +29,7 @@ import hub
 MACHINES = {"vast": "M1", "vast2": "M2", "vast3": "M3"}
 ON_HOLD = {"exp2", "exp2_optional"}
 OUT = "results/dashboard"
+UPDATE_TIMEOUT = 150  # seconds
 REMOTE = r"""cd /root/low_compute_fairness 2>/dev/null || exit 3
 echo "GPU|$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader 2>/dev/null | head -1)"
 echo "TMUX|$(tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' ')"
@@ -176,13 +178,23 @@ def main():
     ap.add_argument("--every", type=int, metavar="SECONDS", help="repeat every SECONDS")
     args = ap.parse_args()
     while True:
-        try:
-            update()
-        except Exception as e:  # keep the loop alive through network errors
-            print(f"{time.strftime('%H:%M:%S')}: update failed: {e!r}", flush=True)
+        # Each update runs in its own process with a time limit: a hung HF or SSH call must not stall the loop.
+        proc = multiprocessing.Process(target=safe_update)
+        proc.start()
+        proc.join(UPDATE_TIMEOUT)
+        if proc.is_alive():
+            proc.terminate()
+            print(f"{time.strftime('%H:%M:%S')}: update timed out after {UPDATE_TIMEOUT}s", flush=True)
         if not args.every:
             break
         time.sleep(args.every)
+
+
+def safe_update():
+    try:
+        update()
+    except Exception as e:  # keep the loop alive through network errors
+        print(f"{time.strftime('%H:%M:%S')}: update failed: {e!r}", flush=True)
 
 
 if __name__ == "__main__":
