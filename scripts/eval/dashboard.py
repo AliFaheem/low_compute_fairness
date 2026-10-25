@@ -83,7 +83,21 @@ def machine_status(host, name):
         p = re.match(r"\s*(\d+)/(\d+) rows", row["progress"])
         if m and p and "step exit" not in cur.get("STEP", ""):
             live = (m.group(1), int(p.group(1)), int(p.group(2)))
+        prep = prep_variant(cur.get("STEP", ""))
+        if prep:
+            live = ("prep",) + prep
     return row, live
+
+
+def prep_variant(step):
+    """(model, variant) if the current step builds a compressed copy (Wanda pruning, AWQ), else None."""
+    if "step exit" in step:
+        return None
+    m = re.search(r"wanda_prune\.py --model (\S+) --sparsity 0\.(\d+)(.*)", step)
+    if m and "--no-save" not in m.group(3):
+        return m.group(1), f"wanda{m.group(2)}" + ("mix" if "--calib mix" in m.group(3) else "")
+    m = re.search(r"awq_quant\.py --model (\S+)", step)
+    return (m.group(1), "awq") if m else None
 
 
 def run_state(run):
@@ -107,11 +121,13 @@ def update():
     common.load_env()
     if hub.repo():
         hub.fetch_meta(hub.repo())
-    machines, live = [], {}
+    machines, live, prep = [], {}, {}
     for host, name in MACHINES.items():
         row, lv = machine_status(host, name)
         machines.append(row)
-        if lv:
+        if lv and lv[0] == "prep":
+            prep[(lv[1], lv[2])] = name
+        elif lv:
             live[lv[0]] = (name, lv[1], lv[2])
 
     grid, in_grid = [], set()
@@ -124,6 +140,8 @@ def update():
         if run in live and state != "done":
             name, done, total = live[run]
             state, pct, where = "running", str(100 * done // total), name
+        elif state == "pending" and (model, variant) in prep:
+            state, where = "preparing", prep[(model, variant)]
         elif state == "pending" and exp in ON_HOLD:
             state = "on hold"
         grid.append({"exp": exp, "model": model, "variant": variant, "lang": lang, "state": state,

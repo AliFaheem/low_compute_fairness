@@ -48,6 +48,7 @@
   .s-done { background: var(--done-bg); color: var(--done); }
   .s-running { background: var(--run-bg); color: var(--run); font-weight: 600; }
   .s-partial { background: var(--part-bg); color: var(--part); }
+  .s-preparing { background: var(--run-bg); color: var(--run); border: 1px dashed var(--run); }
   .s-pending { background: var(--pend-bg); color: var(--pend); }
   .s-onhold { background: none; color: var(--hold); border: 1px dashed var(--line); }
   .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-top: 6px; }
@@ -70,7 +71,7 @@
 
   <h2>Run grid</h2>
   <div class="legend">
-    <span><i class="s-done"></i>done</span><span><i class="s-running"></i>running (%)</span>
+    <span><i class="s-done"></i>done</span><span><i class="s-running"></i>running (%)</span><span><i class="s-preparing"></i>pruning / quantizing</span>
     <span><i class="s-partial"></i>partial (stopped)</span><span><i class="s-pending"></i>pending</span>
     <span><i class="s-onhold"></i>on hold</span>
   </div>
@@ -105,9 +106,10 @@ if (!D) {
   const active = grid.filter(r => r.state !== "on hold");
   const done = active.filter(r => r.state === "done").length;
   const running = active.filter(r => r.state === "running").length;
+  const preparing = new Set(active.filter(r => r.state === "preparing").map(r => r.model + r.variant)).size;
   document.getElementById("bar").style.width = (100 * done / Math.max(active.length, 1)).toFixed(1) + "%";
   document.getElementById("summary").textContent =
-    `${done} of ${active.length} active runs done · ${running} running · ${active.length - done - running} left` +
+    `${done} of ${active.length} active runs done · ${running} scoring · ${preparing} variant(s) being pruned/quantized · ${active.length - done - running} left` +
     ` · ${grid.length - active.length} on hold`;
 
   document.getElementById("machines").innerHTML = machines.map(m => {
@@ -132,6 +134,7 @@ if (!D) {
       if (!r) return "<td></td>";
       const cls = "s-" + r.state.replace(" ", "");
       const txt = r.state === "done" ? "✓" : r.state === "running" ? r.pct + "%" + (r.machine ? " " + r.machine : "")
+                : r.state === "preparing" ? "prep " + (r.machine || "")
                 : r.state === "partial" ? "part" : r.state === "on hold" ? "hold" : "–";
       return `<td class="${cls}" title="${esc(model)} ${esc(v)} ${esc(l)}: ${esc(r.state)}">${esc(txt)}</td>`;
     }).join("") + "</tr>").join("");
