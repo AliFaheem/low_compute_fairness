@@ -25,6 +25,7 @@ models:
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
     wanda50: {hf_id: models/qwen3-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local (bandwidth)
     wanda25: {hf_id: models/qwen3-8b-wanda25, revision: null}
+    awq: {hf_id: models/qwen3-8b-awq, revision: null}   # scripts/compression/awq_quant.py (mixed calibration)
     wanda50mix: {hf_id: models/qwen3-8b-wanda50mix, revision: null}
     wanda25mix: {hf_id: models/qwen3-8b-wanda25mix, revision: null}
   gemma-4-e4b:
@@ -32,6 +33,7 @@ models:
     revision: 411aa17b749aa952df1359d2dcea73917a544d9a
     wanda50: {hf_id: models/gemma-4-e4b-wanda50, revision: null}   # pruned on the Vast machine, kept local (bandwidth)
     wanda25: {hf_id: models/gemma-4-e4b-wanda25, revision: null}
+    awq: {hf_id: models/gemma-4-e4b-awq, revision: null}   # scripts/compression/awq_quant.py (mixed calibration)
     wanda50mix: {hf_id: models/gemma-4-e4b-wanda50mix, revision: null}
     wanda25mix: {hf_id: models/gemma-4-e4b-wanda25mix, revision: null}
 
@@ -62,6 +64,7 @@ models:
     revision: 6792251690a01687b7ed19690914321e0c67c738
     wanda50: {hf_id: models/qalb-1.0-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local
     wanda25: {hf_id: models/qalb-1.0-8b-wanda25, revision: null}
+    awq: {hf_id: models/qalb-1.0-8b-awq, revision: null}   # scripts/compression/awq_quant.py (mixed calibration)
     wanda50mix: {hf_id: models/qalb-1.0-8b-wanda50mix, revision: null}
     wanda25mix: {hf_id: models/qalb-1.0-8b-wanda25mix, revision: null}
   alif-1.0-8b:                   # Urdu LoRA (r=128, + embeddings) on Llama-3.1-8B, instruction-tuned; adapter-only repo

@@ -45,7 +45,7 @@ def git_state():
 
 
 def model_source(spec, variant):
-    if variant.startswith("wanda"):  # wanda50, wanda75, ...: pruned copy listed under that key
+    if variant.startswith(("wanda", "awq")):  # wanda50, awq, ...: compressed copy listed under that key
         src = spec.get(variant)
         if not src:
             raise SystemExit(f"{spec['hf_id']}: no {variant} checkpoint in configs/models.yaml yet")
@@ -70,10 +70,15 @@ def load_model(spec, variant, device):
     kw = dict(revision=revision, dtype=torch.bfloat16, device_map=device)
     if qc is not None:
         kw["quantization_config"] = qc
-    try:
-        model = AutoModelForCausalLM.from_pretrained(hf_id, **kw)
-    except ValueError:  # multimodal checkpoints (Gemma 4); only text is ever passed in
-        model = AutoModelForImageTextToText.from_pretrained(hf_id, **kw)
+    if variant.startswith("awq"):  # gptqmodel checkpoint (scripts/compression/awq_quant.py); needs the AWQ venv
+        from gptqmodel import GPTQModel
+        model = GPTQModel.load(hf_id, device=device)
+        model = getattr(model, "model", model)
+    else:
+        try:
+            model = AutoModelForCausalLM.from_pretrained(hf_id, **kw)
+        except ValueError:  # multimodal checkpoints (Gemma 4); only text is ever passed in
+            model = AutoModelForImageTextToText.from_pretrained(hf_id, **kw)
     model.eval()
     tok = AutoTokenizer.from_pretrained(hf_id, revision=revision)
     tok.padding_side = "left"
@@ -87,11 +92,13 @@ def check_quantized(model, variant):
     counts = {}
     for m in model.modules():
         name = type(m).__name__
-        if name in ("Linear", "Linear8bitLt", "Linear4bit"):
+        if name in ("Linear", "Linear8bitLt", "Linear4bit") or "QuantLinear" in name:
             counts[name] = counts.get(name, 0) + 1
     want = {"int8": "Linear8bitLt", "nf4": "Linear4bit"}.get(variant)
     if want and not counts.get(want):
         raise SystemExit(f"{variant}: no {want} layers after loading; quantization did not apply")
+    if variant.startswith("awq") and not any("QuantLinear" in n for n in counts):
+        raise SystemExit(f"{variant}: no QuantLinear layers after loading; quantization did not apply")
     return counts
 
 
