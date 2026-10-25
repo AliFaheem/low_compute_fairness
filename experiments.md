@@ -365,6 +365,23 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - 15:45: **Machine 3 (`vast3`, RTX 4080 Super 32 GB, ssh2.vast.ai:19875)** runs `PART=prune` (tmux `alif_p`, log `logs/alif_prune.log`). Its only model download is Llama-3.1-8B + the Alif adapter, and no other model goes there. Merged at 15:48 (224 layers, 2 tensors); wanda50 (C4) pruning started. Expected done about 21:30. Machine 1's `alif_p` fallback was removed.
   - Two earlier machine-3 instances were dropped. The first was an RTX PRO 4500 Blackwell (sm_120), which needs a cu130 torch build. torch 2.14.1+cu130 worked there via `uv pip install --reinstall-package torch` plus `UV_NO_SYNC=1`, but the instance was replaced by the user. The second was an RTX 3090 with downloads at about 0.25 MB/s, so it was unusable. Check download speed before setting up a new Vast machine.
 
+### 25 Oct 2026, 15:53: Machine 1 old queue done; Gemma NF4 diagnosis result
+
+- Machine 1's old queue ended at 15:51 (`OLD MACHINE ALL DONE`; last step the Llama `ur_abc` pilot, 500 items, uploaded). Tier 1 started at 15:51.
+- **Gemma NF4 diagnosis** (`logs/quant_check_gemma-4-e4b.json` on Machine 1; perplexity, 8 × 2048 windows):
+
+  | config | en | ur | quantized linears |
+  |---|---|---|---|
+  | bf16 | 16.72 | 23.44 | 0 |
+  | int8 | 17.40 | 25.74 | 592 |
+  | nf4 (as run) | 40.93 | 114.82 | 592 |
+  | nf4 core only | 25.58 | 63.17 | 430 |
+
+  - NF4's damage to Gemma is **real**, not a loading bug. It is stronger in Urdu (×4.9) than English (×2.4).
+  - Keeping the 84 per-layer-embedding linears (`per_layer_input_gate`, `per_layer_projection`) plus the audio/vision projections in bf16 removes about half the damage, but core NF4 alone still costs en ×1.5 and ur ×2.7.
+  - Conclusion: keep the existing Gemma nf4 runs as the main result (the same standard bnb config as every model). An `nf4core` variant is optional supplementary work (decision pending).
+- The noise-floor reruns started at 15:53 (Qwen first).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
