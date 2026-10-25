@@ -293,6 +293,7 @@ def main():
     ap.add_argument("--limit", type=int, help="score an evenly spaced sample of N items (smoke test)")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--no-upload", action="store_true", help="do not upload results to HF_RESULTS_REPO")
+    ap.add_argument("--run-suffix", help="extra run-id suffix, e.g. rerun for a noise-floor repeat of a finished run")
     ap.add_argument("--token-budget", type=int, default=16384,
                     help="max (batch size x prompt length) tokens per forward pass; halved on out-of-memory")
     args = ap.parse_args()
@@ -304,8 +305,8 @@ def main():
         if spec is None or variant not in cfg["variants"]:
             raise SystemExit(f"Unknown model {model_key!r} or variant {variant!r} (see configs/models.yaml)")
         root = common.SMOKE_DIR if args.limit else common.RUNS_DIR
-        dirs = {l: os.path.join(root, common.run_id(model_key, variant, l) + (f"__n{args.limit}" if args.limit else ""))
-                for l in langs}
+        suffix = (f"__{args.run_suffix}" if args.run_suffix else "") + (f"__n{args.limit}" if args.limit else "")
+        dirs = {l: os.path.join(root, common.run_id(model_key, variant, l) + suffix) for l in langs}
         repo = "" if args.no_upload else hub.repo()
         if repo:
             hub.ensure_private(repo)
