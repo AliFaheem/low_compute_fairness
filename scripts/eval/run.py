@@ -92,13 +92,13 @@ def check_quantized(model, variant):
     counts = {}
     for m in model.modules():
         name = type(m).__name__
-        if name in ("Linear", "Linear8bitLt", "Linear4bit") or "QuantLinear" in name:
+        if name in ("Linear", "Linear8bitLt", "Linear4bit") or "QuantLinear" in name or "Awq" in name:
             counts[name] = counts.get(name, 0) + 1
     want = {"int8": "Linear8bitLt", "nf4": "Linear4bit"}.get(variant)
     if want and not counts.get(want):
         raise SystemExit(f"{variant}: no {want} layers after loading; quantization did not apply")
-    if variant.startswith("awq") and not any("QuantLinear" in n for n in counts):
-        raise SystemExit(f"{variant}: no QuantLinear layers after loading; quantization did not apply")
+    if variant.startswith("awq") and not any("Awq" in n or "QuantLinear" in n for n in counts):
+        raise SystemExit(f"{variant}: no AWQ layers after loading; quantization did not apply")
     return counts
 
 
