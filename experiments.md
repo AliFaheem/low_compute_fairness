@@ -416,6 +416,18 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Gemma-4-E4B AWQ failed inside gptqmodel**: `TypeError: Gemma4TextRotaryEmbedding.forward() missing 1 required positional argument: 'layer_type'` in `awq_processor._search_best_scale`. This is a gptqmodel 7.7 + transformers 5.20 incompatibility for Gemma 4, not our code. **Decision pending (user):** skip Gemma AWQ, try GPTQ for Gemma, or patch gptqmodel.
 - Qalb AWQ quantization was running at 19:43 (layer 17 of 32); it scores with the fixed registry.
 
+### 25 Oct 2026, 19:52: AWQ extended to Llama and Alif; Gemma patch last (user)
+
+- User: run AWQ for all the other models, and patch gptqmodel for Gemma at the end.
+- Assignment follows the one-download-per-model rule, so no model is downloaded:
+  - Machine 2: Qalb (quantizing), then Qwen scoring (tmux `awq2`).
+  - Machine 1: tmux `awq` waits for `llama-3.1-8b quant DONE`, then Llama AWQ (about 23:30–01:00).
+  - Machine 3: tmux `awq` waits for `llama-3.1-8b prune DONE`, then Alif AWQ (about 00:30–02:00).
+- The AWQ venv was cloned to Machines 1 and 3 from Machine 2's exact package list (88 packages; gptqmodel 7.7.0, torch 2.14.1+cu126, transformers 5.20.2).
+- The calibration file `logs/calibration/qalb-1.0-8b-wanda50mix.jsonl` (sha256 `d2e72bd209e0…`) was copied to both, so every AWQ model uses the same text.
+- `awq` entries were added for Llama and Alif (commit `6b7ec89`).
+- Gemma AWQ: patch the gptqmodel Gemma 4 rotary call (`layer_type`), test on Machine 2 after its queue (about 21:45). Validate by perplexity close to BF16, as Qwen's was.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
