@@ -407,6 +407,15 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Machine 2: tmux `awq` (`scripts/eval/queues/awq_queue.sh`, log `logs/awq.log`) waits for `VAST2 ALL DONE` (about 19:20), then Qwen, Gemma, Qalb: quantize, score 4 languages, delete the copy (planned cleanup; meta kept in `logs/awq_meta/`). Estimate about 1–1.5 h per model, done about 23:00. All 3 models are cached on Machine 2, so nothing is downloaded.
 - Commit `446bf28`.
 
+### 25 Oct 2026, 19:45: AWQ first GPU results (Machine 2)
+
+- Qalb finished on Machine 2 at 19:05 (`VAST2 ALL DONE`: wanda25mix complete). The AWQ queue then started.
+- First attempt: all 3 models failed within seconds, because `GPTQModel.load` passes extra kwargs to the model constructor (`revision` is rejected). Fix `2c95786`: load the pinned snapshot by local path. Restarted at 19:07.
+- **Qwen3-8B AWQ quantized OK** in 19.9 min. Perplexity after (16 × 2048, same windows as Wanda): en 7.476, ur 3.386, roman_ur 16.657, vs BF16 7.163 / 3.23 / 15.49. That is +4% / +5% / +8%: much milder than NF4 or Wanda 50%.
+  - Its scoring failed: `awq` was missing from the `variants:` registry in `models.yaml` (fix `2fdcbab`). The quantized copy `models/qwen3-8b-awq` was kept. tmux `awq2` re-runs Qwen (skips quantization, scores 4 languages) after the current queue ends.
+- **Gemma-4-E4B AWQ failed inside gptqmodel**: `TypeError: Gemma4TextRotaryEmbedding.forward() missing 1 required positional argument: 'layer_type'` in `awq_processor._search_best_scale`. This is a gptqmodel 7.7 + transformers 5.20 incompatibility for Gemma 4, not our code. **Decision pending (user):** skip Gemma AWQ, try GPTQ for Gemma, or patch gptqmodel.
+- Qalb AWQ quantization was running at 19:43 (layer 17 of 32); it scores with the fixed registry.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
