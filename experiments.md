@@ -387,6 +387,15 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - `TIER1 DONE` at 17:29. Both noise-floor reruns are complete and uploaded: `qwen3-8b__bf16__<lang>__rerun` and `gemma-4-e4b__bf16__<lang>__rerun`, 4 languages each. All steps exited 0. Comparing them with the original BF16 runs is local analysis, later.
 - The Alif smoke test (500 items × 4 languages) started on Machine 1 at 17:30; Alif `bf16`/`int8`/`nf4` follow automatically.
 
+### 25 Oct 2026, 18:05: Llama-3.1-8B full Exp 1 queued (off hold, user)
+
+- User: queue Llama-3.1-8B full where it's already downloaded. It is the base for the Qalb/Alif language-adaptation comparison and a third main family.
+- All 7 variants (`bf16`, `int8`, `nf4`, `wanda50`, `wanda25`, `wanda50mix`, `wanda25mix`) × 4 languages, matching Qalb and Alif. Llama was added to `exp1_calib` in `runs.yaml`, with mix paths in `models.yaml`.
+- New generic `scripts/eval/queues/model_parts.sh` (`MODEL`, `PART=quant|prune`, optional `WAIT_LOG`/`WAIT_FOR`, `MERGE=1` for adapter models). It is `alif_full.sh` with the model as a parameter; `alif_full.sh` was left untouched because it is running.
+- Machine 1: tmux `llama_q` waits for `ALIF quant DONE`, then runs the quant part (log `logs/llama_quant.log`, about 20:45–23:45).
+- Machine 3: tmux `llama_p` waits for `ALIF prune DONE`, then runs the prune part (log `logs/llama_prune.log`, about 20:00–00:15). Llama is cached on both machines, so nothing is downloaded.
+- Commit `c94f9f8`.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
