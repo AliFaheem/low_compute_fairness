@@ -475,6 +475,11 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - The AWQ queue ended, so autostop stopped Machine 2 at 22:29 UTC, as designed (first real autostop: it works). The user restarted it at about 22:35.
 - Possible fix (decision pending, user): leave Gemma's per-layer-embedding adapters in bf16 and AWQ-quantize only decoder attention + MLP, by overriding the module tree. This matches what AWQ covers in Qwen/Llama/Qalb/Alif, which have no such layers, and mirrors the NF4 "core only" check.
 
+### 26 Oct 2026, 03:48 PKT (22:48 UTC): Llama quant part done; Gemma AWQ retry running
+
+- Machine 1: `llama-3.1-8b quant DONE` (bf16, int8, nf4 × 4 languages). Llama AWQ started at 22:48 (tmux `awq`); Alif AWQ follows (tmux `awq_alif`); autostop waits for both.
+- Machine 2 (restarted by the user about 22:35; user approved one more Gemma attempt): `awq_quant.py` now also drops Gemma 4's per-layer-embedding adapters from gptqmodel's module tree, so they stay bf16 and AWQ covers decoder attention + MLP only (commit `667c50e`). Started 22:45 (tmux `awq4`, autostop re-armed). It passed layer 4 of 42 with no error; the first attempt failed on layer 0. Validate by perplexity vs BF16.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
