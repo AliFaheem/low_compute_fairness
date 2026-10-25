@@ -284,6 +284,17 @@ Running record of what was run, where, what came out, and what was decided. Meas
   5. `manifest` → `docs/calibration/{c4_en,mix}.tsv` in git (no text).
 - The queues no longer upload anything themselves.
 
+### 25 Oct 2026, 11:00: status, and a fixed upload gap
+
+- Machine 1: Gemma **wanda50 done** (all 4 languages, 10:33; pruned copy deleted); **wanda25** en/ur/roman_ur done, `ur_abc` running. Then calibration (Qwen and Gemma `wanda50mix`/`wanda25mix`), the Qwen perplexity check, and the Llama `ur_abc` pilot.
+- Machine 2: Qwen **wanda25 `ur_abc` done** (10:34). The watcher stopped `exp1` at Gemma (10:34:41) and started Qalb: bf16 `en` done, `ur` running (~14 rows/s).
+- **Upload gap found and fixed:**
+  - Gemma wanda50 `en` was scored while Machine 1 was offline (early morning). It was complete on disk but `partial`/0 rows on HF, and the queue skipped it as locally complete without uploading.
+  - Uploaded manually at 11:00 (19,296 rows).
+  - Then checked all 67 locally complete runs on both machines against HF: none missing.
+  - Fix (commit `28b9495`): `run.py` now calls `hub.ensure_uploaded()` for locally complete runs, so a run finished offline is uploaded next time.
+- **Main Exp 1 (Qwen + Gemma × 5 variants × 4 languages): 39/40 done**; only Gemma wanda25 `ur_abc` remains (running).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
