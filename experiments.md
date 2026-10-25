@@ -4,15 +4,13 @@ Running record of what was run, where, what came out, and what was decided. **Re
 
 ## Current state
 
-- **Phase:** 3 for Qwen3-8B: full Exp 1 queue running since 25 Oct 01:02 (tmux `qwen-exp1`, log `logs/qwen-exp1.log`). Pilots are done for all 3 models.
-- **Next in line:** tmux `after-qwen` (log `logs/after-qwen.log`) starts when the Qwen queue logs `QUEUE DONE`. It runs Qwen wanda25, then all Gemma variants including wanda50 and wanda25.
+- **Phase:** 3, full Exp 1 runs for Qwen3-8B and Gemma-4-E4B (letter scoring), one queue: tmux `exp1`, log `logs/exp1.log`, script `scripts/eval/queues/exp1_queue.sh`.
+  - Order: Qwen bf16 → Gemma bf16 → Qwen nf4, int8 → Gemma nf4, int8 → Qwen wanda50, wanda25 → Gemma wanda50, wanda25.
+  - Started 25 Oct 01:42; estimated 17–21 h in total.
 - **To check progress in a new session:**
-  - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/qwen-exp1.log /root/low_compute_fairness/logs/after-qwen.log'` lists steps (Qwen-queue exit codes are unreliable, see 01:30);
+  - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log'` lists steps, exit codes and finished runs;
   - `uv run python scripts/eval/status.py` shows the grid.
-- **Machine:** Vast.ai instance 57582615, 1× RTX 3090 Ti 24 GB, 109 GB disk, no persistent volume (destroy wipes it; stop/start keeps it).
-  - SSH: `ssh vast` (entry in `~/.ssh/config` on Ali's Mac, key `~/.ssh/vast_ed25519`, proxy `ssh4.vast.ai:10033`). Update the Port/HostName if the instance is recreated.
-  - Repo at `/root/low_compute_fairness`, branch `setup/initial`. `.env` there holds only `HF_TOKEN`, `HF_DATA_REPO`, `HF_RESULTS_REPO`.
-  - Models cache: `/workspace/.hf_home`.
+  - If the instance restarted, re-run the queue: it skips finished runs.
 - **Results:** private HF dataset `alifaheem94/pakbbq-results`. Pilot runs are under `smoke/` (any `--limit` run); full runs will go under `runs/`.
 - **Watch progress:** on Vast, `tail -f logs/<session>.log` or `tmux attach -t <session>`; from anywhere, `uv run python scripts/eval/status.py --watch`.
 - **Pilots done:** Llama-3.1-8B, Qwen3-8B, Gemma-4-E4B (BF16, 500 items, all 3 languages).
@@ -136,6 +134,18 @@ Running record of what was run, where, what came out, and what was decided. **Re
 - `configs`: variant `wanda25`, local paths `models/<model>-wanda25`. The Exp 1 variants are now `[bf16, int8, nf4, wanda50, wanda25]` (60-run grid).
 - `after-qwen` was restarted with the updated `scripts/eval/queues/after_qwen_queue.sh`: Qwen 25% after the Qwen queue, and Gemma 50% + 25%. The pruning cost per level is the same as before, so the time estimate is unchanged at about 17–21 h total.
 - Progress at 01:33: Qwen bf16 `en` and `ur` complete; `roman_ur` running.
+
+### 25 Oct 2026, 01:42: single queue, low-risk steps first
+
+- User decision: run the low-risk steps first so most results arrive even if pruning fails. Order: **Qwen BF16 → Gemma BF16 → NF4/INT8 for both → Wanda 50%/25% for both**.
+- The old sessions `qwen-exp1` (stopped with Ctrl-C during Qwen bf16 `roman_ur`; 11,376/19,296 rows were saved) and `after-qwen` (still waiting) were replaced by **one tmux session `exp1`**.
+  - It runs `scripts/eval/queues/exp1_queue.sh` (commit `8df80db`), log `logs/exp1.log`.
+  - It skips complete runs (per `meta.json`), records real exit codes, and only prunes if no pruned copy exists.
+  - Each pruned copy is deleted after its runs complete (`wanda_meta.json` is kept in `logs/wanda_meta/`).
+  - It is safe to restart at any time: `tmux new-session -d -s exp1 "bash scripts/eval/queues/exp1_queue.sh 2>&1 | tee -a logs/exp1.log"`.
+- Resumed correctly: Qwen bf16 `roman_ur` continued from row 11,376; `en`/`ur` were already complete.
+- Untested on this GPU: NF4/INT8 loading (low risk; checked at load time) and Wanda on 8B models (medium risk; only CPU-tested on 0.6B). These run last.
+- Older queue scripts (`qwen_queue.sh`, `after_qwen_queue.sh`) are kept in `scripts/eval/queues/` for the record only.
 
 ### Pilot results so far (500 items each, BF16)
 
