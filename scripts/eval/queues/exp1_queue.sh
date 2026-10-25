@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Exp 1 queue for Qwen3-8B and Gemma-4-E4B (letter scoring), low-risk steps first:
-# all BF16/NF4/INT8 runs, then Wanda pruning (untested on GPU) at 50% and 25%.
+# BF16 for both, then NF4/INT8 for both, then Wanda pruning (untested on GPU) at 50% and 25%.
 # Runs resume from saved rows, so restarting this queue skips finished work.
 # Pruned copies (~16 GB each) are deleted after their runs complete, to fit the 109 GB disk;
 # the wanda_meta.json of each copy is kept in logs/wanda_meta/.
@@ -31,12 +31,15 @@ pruned() {  # model $1, sparsity percent $2: prune if needed, run, delete the co
   run "$1" "$v" && cleanup "$1-$v"
 }
 
-# 1. Low risk: quantization and references (bitsandbytes is checked at load time)
+# 1. BF16 references for both models (tested in the pilots)
+for m in qwen3-8b gemma-4-e4b; do run "$m" bf16; done
+
+# 2. Quantized variants (bitsandbytes; quantization is checked at load time)
 for m in qwen3-8b gemma-4-e4b; do
-  for v in bf16 nf4 int8; do run "$m" "$v"; done
+  for v in nf4 int8; do run "$m" "$v"; done
 done
 
-# 2. Higher risk: Wanda pruning
+# 3. Higher risk: Wanda pruning
 for m in qwen3-8b gemma-4-e4b; do
   for pct in 50 25; do pruned "$m" "$pct"; done
 done
