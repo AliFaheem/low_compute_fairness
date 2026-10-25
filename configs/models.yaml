@@ -18,6 +18,8 @@ models:
     gated: true
     wanda50: {hf_id: models/llama-3.1-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local
     wanda25: {hf_id: models/llama-3.1-8b-wanda25, revision: null}
+    wanda50mix: {hf_id: models/llama-3.1-8b-wanda50mix, revision: null}
+    wanda25mix: {hf_id: models/llama-3.1-8b-wanda25mix, revision: null}
   qwen3-8b:
     hf_id: Qwen/Qwen3-8B-Base
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
