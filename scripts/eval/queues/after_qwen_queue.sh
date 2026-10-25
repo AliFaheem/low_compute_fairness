@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs after the Qwen queue: Qwen Wanda 75%, then the full Gemma-4-E4B Exp 1 (letter scoring).
+# Runs after the Qwen queue: Qwen Wanda 25%, then the full Gemma-4-E4B Exp 1 (letter scoring).
 # Pruned copies (~16 GB each) are deleted after their runs succeed, to fit the 109 GB disk;
 # the wanda_meta.json of each copy is kept in logs/wanda_meta/.
 cd /root/low_compute_fairness
@@ -20,16 +20,16 @@ complete() {  # all 3 languages of model $1, variant $2 finished (per their meta
   done
 }
 
-# Qwen: free the 50% copy once its runs are complete (the Qwen queue log always says exit 0), then prune to 75%
+# Qwen: free the 50% copy once its runs are complete (the Qwen queue log always says exit 0), then prune to 25%
 if [ -d models/qwen3-8b-wanda50 ] && complete qwen3-8b wanda50; then
   cleanup qwen3-8b-wanda50
 fi
-step $PRUNE --model qwen3-8b --sparsity 0.75 && step $Q --variant wanda75 && cleanup qwen3-8b-wanda75
+step $PRUNE --model qwen3-8b --sparsity 0.25 && step $Q --variant wanda25 && cleanup qwen3-8b-wanda25
 
 # Gemma
 step $G --variant bf16
 step $G --variant nf4
 step $G --variant int8
 step $PRUNE --model gemma-4-e4b --sparsity 0.5 && step $G --variant wanda50 && cleanup gemma-4-e4b-wanda50
-step $PRUNE --model gemma-4-e4b --sparsity 0.75 && step $G --variant wanda75 && cleanup gemma-4-e4b-wanda75
+step $PRUNE --model gemma-4-e4b --sparsity 0.25 && step $G --variant wanda25 && cleanup gemma-4-e4b-wanda25
 echo "=== $(date "+%F %T") QUEUE DONE"
