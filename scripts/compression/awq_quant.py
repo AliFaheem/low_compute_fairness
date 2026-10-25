@@ -78,7 +78,12 @@ def main():
 
     qc = QuantizeConfig(bits=args.bits, group_size=args.group_size, method=METHOD.AWQ, format=FORMAT.GEMM)
     t0 = time.time()
-    model = GPTQModel.load(spec["hf_id"], qc, revision=spec["revision"])
+    # GPTQModel.load passes extra kwargs to the model constructor (no `revision`), so load the pinned snapshot by path.
+    src = spec["hf_id"]
+    if spec["revision"]:
+        from huggingface_hub import snapshot_download
+        src = snapshot_download(spec["hf_id"], revision=spec["revision"])
+    model = GPTQModel.load(src, qc)
     model.quantize(calib, batch_size=1, tokenizer=tok)
     model.save(out)
     tok.save_pretrained(out)
