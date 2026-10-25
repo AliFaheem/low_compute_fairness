@@ -480,6 +480,19 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Machine 1: `llama-3.1-8b quant DONE` (bf16, int8, nf4 × 4 languages). Llama AWQ started at 22:48 (tmux `awq`); Alif AWQ follows (tmux `awq_alif`); autostop waits for both.
 - Machine 2 (restarted by the user about 22:35; user approved one more Gemma attempt): `awq_quant.py` now also drops Gemma 4's per-layer-embedding adapters from gptqmodel's module tree, so they stay bf16 and AWQ covers decoder attention + MLP only (commit `667c50e`). Started 22:45 (tmux `awq4`, autostop re-armed). It passed layer 4 of 42 with no error; the first attempt failed on layer 0. Validate by perplexity vs BF16.
 
+### 26 Oct 2026, 03:55 PKT (22:55 UTC): Gemma AWQ dropped; Llama AWQ download bug caught; tmux prefix deadlock
+
+- **Gemma AWQ failed a second time**, at layer 5 (layers 0–4 quantized): `RuntimeError: The size of tensor a (512) must match the size of tensor b (256) at non-singleton dimension 3`.
+  - Likely cause: the preserved position embeddings are the ones captured at the first layer (sliding attention, head dim 256). Gemma 4's full-attention layers use head dim 512, so they cannot be reused there.
+  - Fixing it would need per-layer-type embeddings inside gptqmodel's AWQ replay, i.e. editing the library.
+  - Per the overnight rule (a second failure is logged and left), **Gemma AWQ is dropped**: tool limitation (gptqmodel 7.7 + transformers 5.20 on Gemma-4-E4B). Machine 2 auto-stopped at about 22:56 UTC.
+- **Llama AWQ on Machine 1 started downloading the whole HF repo**: `snapshot_download` without patterns pulls `original/consolidated.00.pth`, a second 16 GB copy of the weights.
+  - Caught after 2.5 minutes; 13.3 GB had been downloaded (bandwidth wasted). Killed, and the partial temp file (`*.incomplete`) removed.
+  - Fix `74e3d5c`: allow only transformers files and ignore `original/*`. Verified it resolves from the cache in 0 s.
+  - Qwen, Qalb and Gemma were unaffected; their repos have no `original/`.
+- **tmux prefix match deadlock**: `tmux has-session -t awq` matches any session starting with `awq`, so `awq_alif` was waiting on itself. Alif AWQ was started directly at 22:53. `autostop.sh` now uses exact names (`-t "=name"`); the machines' running copies still use the old version, but their session names have no prefix clash.
+- Machine 1 now runs Alif AWQ (`awq_alif`), then Llama AWQ (`awq_llama`); autostop waits for both. Expected stop about 06:30 PKT.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |

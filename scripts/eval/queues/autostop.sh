@@ -8,7 +8,7 @@ cd /root/low_compute_fairness
 SESSIONS="${SESSIONS:?set SESSIONS, the tmux sessions to wait for}"
 GRACE="${GRACE:-300}"   # seconds to wait after the last session ends (lets late uploads finish)
 busy() {
-  for s in $SESSIONS; do tmux has-session -t "$s" 2>/dev/null && return 0; done
+  for s in $SESSIONS; do tmux has-session -t "=$s" 2>/dev/null && return 0; done   # "=": exact name, not prefix
   pgrep -f "scripts/(eval/run|compression/(wanda_prune|awq_quant)|model_prep/merge_lora)\.py" >/dev/null
 }
 echo "=== $(date "+%F %T") autostop armed: waiting for sessions [$SESSIONS]"
