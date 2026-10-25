@@ -10,7 +10,7 @@ experiments:
     models: [llama-3.1-8b, qwen3-8b, gemma-4-e4b, qalb-1.0-8b, alif-1.0-8b]
     variants: [wanda50mix, wanda25mix]
   exp1_awq:                      # AWQ 4-bit, group 128, mixed en/ur/roman_ur calibration (gptqmodel venv)
-    models: [qwen3-8b, gemma-4-e4b, qalb-1.0-8b]
+    models: [llama-3.1-8b, qwen3-8b, gemma-4-e4b, qalb-1.0-8b, alif-1.0-8b]   # gemma: needs a gptqmodel patch (last)
     variants: [awq]
   exp2:                          # distillation: students vs llama-3.1-8b bf16 (shared with exp1)
     models: [llama-3.1-minitron-4b-width, llama-3.1-minitron-4b-depth, llama-3.2-3b]

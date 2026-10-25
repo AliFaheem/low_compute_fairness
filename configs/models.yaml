@@ -21,6 +21,7 @@ models:
     wanda25: {hf_id: models/llama-3.1-8b-wanda25, revision: null}
     wanda50mix: {hf_id: models/llama-3.1-8b-wanda50mix, revision: null}
     wanda25mix: {hf_id: models/llama-3.1-8b-wanda25mix, revision: null}
+    awq: {hf_id: models/llama-3.1-8b-awq, revision: null}   # scripts/compression/awq_quant.py (mixed calibration)
   qwen3-8b:
     hf_id: Qwen/Qwen3-8B-Base
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
@@ -77,6 +78,7 @@ models:
     wanda25: {hf_id: models/alif-1.0-8b-wanda25, revision: null}
     wanda50mix: {hf_id: models/alif-1.0-8b-wanda50mix, revision: null}
     wanda25mix: {hf_id: models/alif-1.0-8b-wanda25mix, revision: null}
+    awq: {hf_id: models/alif-1.0-8b-awq, revision: null}   # scripts/compression/awq_quant.py (mixed calibration)
   ministral-3-8b:                # best small open model on UrduMMLU (~57%); multimodal checkpoint, run text-only
     hf_id: mistralai/Ministral-3-8B-Base-2512
     revision: d4883f9b36aa2e5d775730d3fdba3d30de51a8ef
