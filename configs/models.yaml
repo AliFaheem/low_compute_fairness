@@ -16,7 +16,8 @@ models:
     hf_id: meta-llama/Llama-3.1-8B
     revision: d04e592bb4f6aa9cfee91e2e20afa771667e1d4b
     gated: true
-    wanda50: null                # set to {hf_id, revision} once the pruned checkpoint is pushed
+    wanda50: {hf_id: models/llama-3.1-8b-wanda50, revision: null}   # pruned on the Vast machine, kept local
+    wanda25: {hf_id: models/llama-3.1-8b-wanda25, revision: null}
   qwen3-8b:
     hf_id: Qwen/Qwen3-8B-Base
     revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
