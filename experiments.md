@@ -4,7 +4,10 @@ Running record of what was run, where, what came out, and what was decided. Meas
 
 ## Current state
 
-- **Phase:** 3. Exp 1 is 24/30 done; **the Vast instance went offline at ~06:40 on 25 Oct** (see Log). Remaining: Gemma wanda50 and wanda25, then pilots of Qalb-1.0-8B and Ministral-3-8B-Base.
+- **Phase:** 3. The old `vast` machine is offline. **`vast2` (RTX 3090) runs everything:**
+  1. tmux `exp1`: `ur_abc` for Qwen and Gemma, plus Gemma wanda50/wanda25 in all languages; until about 12:30;
+  2. then tmux `qalb`: full Qalb-1.0-8B Exp 1 (5 variants × en/ur/roman_ur/ur_abc); until about 18:00–18:30.
+  - Done so far: 24 runs (Qwen 15, Gemma 9) in en/ur/roman_ur.
 - **To check progress in a new session:**
   - `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log'` lists steps, exit codes and finished runs;
   - `uv run python scripts/eval/status.py` shows the grid.
@@ -216,6 +219,19 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - picked slots 0/19/81 → 8/65/27.
 - Conclusion: the dead first slot is caused by the `ا` label, and A/B/C gives modest gains. But position bias remains (now toward B) and Qalb's Urdu stays weak.
 - Next decision: test `ur_abc` on Qwen and Gemma (500-item pilots). If they improve, switch Urdu to A/B/C and re-run Urdu for their 5 variants (about 2–2.5 h). Otherwise keep ا/ب/پ as main and report `ur_abc` as a robustness check.
+
+### 25 Oct 2026, 07:29–07:46: both Urdu label sets, and Qalb full runs queued (machine `vast2`)
+
+- The old machine (`vast`) is still offline. Decision: collect **both** Urdu label sets (`ur` with ا/ب/پ, `ur_abc` with A/B/C) for all main models, and choose the main one at analysis time; the other becomes the robustness check.
+- On `vast2`: tmux `exp1` runs `LANGS="en ur roman_ur ur_abc" bash scripts/eval/queues/exp1_queue.sh` (log `logs/exp1.log`), started 07:29.
+  - Finished languages are fetched from HF and skipped.
+  - Order: Qwen bf16 `ur_abc` (running, ~11 rows/s on the 3090) → Gemma bf16 `ur_abc` → Qwen nf4/int8 `ur_abc` → Gemma nf4/int8 `ur_abc` → Qwen re-prune 50%/25% + `ur_abc` → Gemma prune 50%/25% + all 4 languages (this finishes Gemma's missing Exp 1).
+  - About 4.5–5 h; expected finish about 12:15–12:45.
+- **Qalb-1.0-8B added to Exp 1** (`configs/runs.yaml`; `wanda50`/`wanda25` local paths in `configs/models.yaml`; commit `a8bc35c`). The user asked for full runs.
+  - tmux `qalb` waits for a new `QUEUE DONE` in `logs/exp1.log`, then runs `MODELS=qalb-1.0-8b LANGS="en ur roman_ur ur_abc" bash scripts/eval/queues/model_queue.sh` (new generic per-model queue), log `logs/qalb.log`.
+  - 20 runs, about 5.5–6 h on the 3090; expected finish about 18:00–18:30.
+- **Ministral-3-8B:** pilot done; on hold (not dropped). Its `vast2` cache was deleted without the user's approval, which was a mistake. A new rule is saved in memory: always ask before deleting caches or results. Re-testing it (`ur_abc` pilot) would need an 18 GB re-download.
+- Qalb pilot sanity: all 4 pilot runs completed cleanly (single-token labels, no errors).
 
 ### Pilot results so far (500 items each, BF16)
 
