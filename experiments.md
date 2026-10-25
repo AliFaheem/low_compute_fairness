@@ -485,7 +485,7 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Gemma AWQ failed a second time**, at layer 5 (layers 0–4 quantized): `RuntimeError: The size of tensor a (512) must match the size of tensor b (256) at non-singleton dimension 3`.
   - Likely cause: the preserved position embeddings are the ones captured at the first layer (sliding attention, head dim 256). Gemma 4's full-attention layers use head dim 512, so they cannot be reused there.
   - Fixing it would need per-layer-type embeddings inside gptqmodel's AWQ replay, i.e. editing the library.
-  - Per the overnight rule (a second failure is logged and left), **Gemma AWQ is dropped**: tool limitation (gptqmodel 7.7 + transformers 5.20 on Gemma-4-E4B). Machine 2 auto-stopped at about 22:56 UTC.
+  - Per the overnight rule (a second failure is logged and left), **Gemma AWQ is dropped**: tool limitation (gptqmodel 7.7 + transformers 5.20 on Gemma-4-E4B). Machine 2 auto-stopped at about 22:56 UTC (confirmed at 23:06: SSH refused, i.e. the instance is stopped).
 - **Llama AWQ on Machine 1 started downloading the whole HF repo**: `snapshot_download` without patterns pulls `original/consolidated.00.pth`, a second 16 GB copy of the weights.
   - Caught after 2.5 minutes; 13.3 GB had been downloaded (bandwidth wasted). Killed, and the partial temp file (`*.incomplete`) removed.
   - Fix `74e3d5c`: allow only transformers files and ignore `original/*`. Verified it resolves from the cache in 0 s.
