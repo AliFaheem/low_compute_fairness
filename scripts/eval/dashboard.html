@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<title>Experiment Progress</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
+    --done: #2f8f5b; --done-bg: #e3f3ea; --run: #2563c9; --run-bg: #e2ecfb; --part: #a86a12; --part-bg: #fbf0dc;
+    --pend: #8a8a84; --pend-bg: #f0f0ec; --hold: #9a9a94; --bad: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --panel: #1e1e1c; --text: #ecece8; --muted: #9a9a94; --line: #33332f;
+      --done: #5cc48a; --done-bg: #1d3328; --run: #6ea1f2; --run-bg: #1c2a42; --part: #e0a54a; --part-bg: #3a2d17;
+      --pend: #8a8a84; --pend-bg: #262624; --hold: #6b6b66; --bad: #ef6b5b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --panel: #1e1e1c; --text: #ecece8; --muted: #9a9a94; --line: #33332f;
+    --done: #5cc48a; --done-bg: #1d3328; --run: #6ea1f2; --run-bg: #1c2a42; --part: #e0a54a; --part-bg: #3a2d17;
+    --pend: #8a8a84; --pend-bg: #262624; --hold: #6b6b66; --bad: #ef6b5b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .bar { height: 8px; background: var(--pend-bg); border-radius: 4px; overflow: hidden; margin: 12px 0 4px; }
+  .bar > div { height: 100%; background: var(--done); }
+  .machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .card .k { color: var(--muted); }
+  .card div { font-size: 13px; overflow-wrap: anywhere; }
+  .down { color: var(--bad); font-weight: 600; }
+  .stale { color: var(--part); }
+  .models { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+  table { border-collapse: separate; border-spacing: 3px; width: 100%; }
+  th { font-weight: 500; color: var(--muted); font-size: 12px; text-align: center; }
+  th.v { text-align: left; }
+  td { text-align: center; font-size: 12px; padding: 4px 2px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+  td.v { text-align: left; background: none; font-size: 12px; padding-left: 0; }
+  .s-done { background: var(--done-bg); color: var(--done); }
+  .s-running { background: var(--run-bg); color: var(--run); font-weight: 600; }
+  .s-partial { background: var(--part-bg); color: var(--part); }
+  .s-pending { background: var(--pend-bg); color: var(--pend); }
+  .s-onhold { background: none; color: var(--hold); border: 1px dashed var(--line); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .extras { columns: 2 280px; font-size: 12px; }
+  .extras div { break-inside: avoid; padding: 2px 0; }
+  .exp { font-size: 11px; color: var(--muted); font-weight: 400; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Experiment progress</h1>
+  <div class="sub" id="updated"></div>
+  <div class="bar"><div id="bar"></div></div>
+  <div class="sub" id="summary"></div>
+
+  <h2>Machines</h2>
+  <div class="machines" id="machines"></div>
+
+  <h2>Run grid</h2>
+  <div class="legend">
+    <span><i class="s-done"></i>done</span><span><i class="s-running"></i>running (%)</span>
+    <span><i class="s-partial"></i>partial (stopped)</span><span><i class="s-pending"></i>pending</span>
+    <span><i class="s-onhold"></i>on hold</span>
+  </div>
+  <div class="models" id="models" style="margin-top:10px"></div>
+
+  <h2>Other runs (pilots, noise floor)</h2>
+  <div class="extras" id="extras"></div>
+</main>
+<script src="data.js"></script>
+<script>
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows;
+  return body.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const D = window.DASH;
+if (!D) {
+  document.getElementById("updated").textContent = "No data.js yet: run  uv run python scripts/eval/dashboard.py";
+} else {
+  document.getElementById("updated").textContent = "Updated " + D.updated + " · page reloads every minute";
+  const grid = parseCSV(D.progress), machines = parseCSV(D.machines), extras = parseCSV(D.extras);
+  const active = grid.filter(r => r.state !== "on hold");
+  const done = active.filter(r => r.state === "done").length;
+  const running = active.filter(r => r.state === "running").length;
+  document.getElementById("bar").style.width = (100 * done / Math.max(active.length, 1)).toFixed(1) + "%";
+  document.getElementById("summary").textContent =
+    `${done} of ${active.length} active runs done · ${running} running · ${active.length - done - running} left` +
+    ` · ${grid.length - active.length} on hold`;
+
+  document.getElementById("machines").innerHTML = machines.map(m => {
+    if (m.reachable !== "yes") return `<div class="card"><h3>${esc(m.machine)} <span class="down">unreachable</span></h3><div class="k">${esc(m.host)}</div></div>`;
+    const age = parseFloat(m.log_age_min);
+    const ageTxt = isNaN(age) ? "" : `<span class="${age > 15 ? "stale" : "k"}">log ${age} min ago</span>`;
+    return `<div class="card"><h3>${esc(m.machine)} <span class="k">${esc(m.host)} · GPU ${esc(m.gpu)}</span></h3>
+      <div><span class="k">step</span> ${esc(m.step)}</div>
+      <div><span class="k">run</span> ${esc(m.run)}</div>
+      <div><span class="k">progress</span> ${esc(m.progress)} ${ageTxt}</div>
+      <div><span class="k">tmux</span> ${esc(m.tmux)}</div></div>`;
+  }).join("");
+
+  const langs = [...new Set(grid.map(r => r.lang))];
+  const models = [...new Set(grid.map(r => r.model))];
+  document.getElementById("models").innerHTML = models.map(model => {
+    const rows = grid.filter(r => r.model === model);
+    const exps = [...new Set(rows.map(r => r.exp))].join(", ");
+    const variants = [...new Set(rows.map(r => r.variant))];
+    const body = variants.map(v => "<tr><td class='v'>" + esc(v) + "</td>" + langs.map(l => {
+      const r = rows.find(x => x.variant === v && x.lang === l);
+      if (!r) return "<td></td>";
+      const cls = "s-" + r.state.replace(" ", "");
+      const txt = r.state === "done" ? "✓" : r.state === "running" ? r.pct + "%" + (r.machine ? " " + r.machine : "")
+                : r.state === "partial" ? "part" : r.state === "on hold" ? "hold" : "–";
+      return `<td class="${cls}" title="${esc(model)} ${esc(v)} ${esc(l)}: ${esc(r.state)}">${esc(txt)}</td>`;
+    }).join("") + "</tr>").join("");
+    const nd = rows.filter(r => r.state === "done").length;
+    return `<div class="card"><h3>${esc(model)} <span class="exp">${esc(exps)} · ${nd}/${rows.length}</span></h3>
+      <table><tr><th class="v">variant</th>${langs.map(l => `<th>${esc(l)}</th>`).join("")}</tr>${body}</table></div>`;
+  }).join("");
+
+  document.getElementById("extras").innerHTML = extras.length
+    ? extras.map(e => `<div>${e.state === "done" ? "✓" : "…"} ${esc(e.run)} <span class="k">${e.state === "done" ? "" : esc(e.state)}</span></div>`).join("")
+    : "<div class='sub'>none</div>";
+}
+</script>
+</body>
+</html>
