@@ -11,7 +11,7 @@ Running record of what was run, where, what came out, and what was decided. Meas
     3. **Llama-3.1-8B full Exp 1** (`logs/llama.log`, about 00:30).
   - **Machine 2 `vast2`** (3090):
     1. Qalb full Exp 1 (`logs/qalb.log`, about 17:30);
-    2. **Exp 2 students** (`logs/exp2.log`, about 19:30).
+    2. Exp 2 students: **on hold** (no downloads for now).
 - **To check progress in a new session:**
   - Machine 1: `ssh vast 'grep "=== \|complete:" /root/low_compute_fairness/logs/old.log /root/low_compute_fairness/logs/qalbcalib.log /root/low_compute_fairness/logs/llama.log'`; Machine 2: `ssh vast2 'grep "=== \|complete:" /root/low_compute_fairness/logs/exp1.log /root/low_compute_fairness/logs/qalb.log /root/low_compute_fairness/logs/exp2.log'`;
   - `uv run python scripts/eval/status.py` shows the grid.
@@ -334,6 +334,7 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - Machine 1: tmux `llama` waits for `M1 QALB CALIB DONE`, then runs `MODELS=llama-3.1-8b model_queue.sh` (log `logs/llama.log`; Llama is cached there). About 6 h, so it ends late tonight.
 - **Priority 2: Exp 2 students** (Llama-3.2-3B, Minitron-4B-Width, Minitron-4B-Depth; BF16 × 4 languages).
   - Machine 2: tmux `exp2` waits for `VAST2 ALL DONE`, then runs `run.py` for each (log `logs/exp2.log`, ends `EXP2 DONE`). About 1.5–2 h plus about 25 GB of downloads.
+  - **11:30: on hold. The user said not to download now; the `exp2` watcher was removed before anything downloaded.** Re-create it when approved.
 - Not now: Qwen3.5-9B (hybrid architecture plus vision; risky for bnb/Wanda), Mistral-NeMo-12B pair (needs ≥40 GB), Gemma-3-12B (too big for BF16).
 - Still to do when a GPU frees: Gemma nf4 check, and a noise floor (BF16 rerun).
 
