@@ -273,15 +273,16 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - Matched design: {English C4, mixed} × {25%, 50%}, which shows whether calibration language matters more at heavier pruning.
 - Pulled on both machines before their calibration queues start. Adds about 3 h GPU in total. New ETAs: Machine 1 about 16:00, Machine 2 about 20:00.
 
-### 25 Oct 2026, ~10:45: calibration documents are now kept
+### 25 Oct 2026, ~10:45: calibration documents are now kept (one version per set)
 
-- User asked to keep the mixed calibration data. `wanda_prune.py` now saves the **exact documents used** by every prune to `logs/calibration/<model>-<variant>.jsonl` (source, file, C4 id/url/token offset or FineWeb-2 id, text). Commit `98c4024`.
-  - Document selection is unchanged: a CPU test gave identical perplexities to before.
-- Storage, following the repo rule "no data in the public repo":
-  - full texts go to the **private HF data repo** (`HF_DATA_REPO/calibration/`) via `scripts/compression/sync_calibration.py push`, which `calib_queue.sh` runs at the end;
-  - **manifests without text** go to git via `sync_calibration.py manifest` → `docs/calibration/*.tsv`.
-  - C4 and FineWeb-2 are both ODC-By, so committing texts publicly would also be allowed if the team prefers.
-- Prunes done before this change (Qwen C4 50/25 originals, Gemma C4 50/25, Qwen re-prunes on `vast2`) have no saved document list. Selection is deterministic (seed 0, model tokenizer), so the list can be regenerated if needed.
+- `wanda_prune.py` saves the exact documents used by every prune to `logs/calibration/<model>-wanda<NN>[mix].jsonl` on each machine. Commit `98c4024`. Selection is unchanged (verified on CPU).
+- **User decision: keep just one version of each calibration set**, `c4_en` and `mix`. Plan after both machines finish:
+  1. scp the per-model lists to the Mac;
+  2. `sync_calibration.py regen-c4 --models qwen3-8b gemma-4-e4b` regenerates the C4 lists for prunes done before recording (same seed/procedure; tokenizer only, no GPU);
+  3. `merge` → `data/our_data/calibration/{c4_en,mix}.jsonl`. Each document appears once, with the models that used it; each model's tokenizer draws a slightly different set, and sparsity doesn't matter.
+  4. `push` → private `HF_DATA_REPO/calibration/`;
+  5. `manifest` → `docs/calibration/{c4_en,mix}.tsv` in git (no text).
+- The queues no longer upload anything themselves.
 
 ### Pilot results so far (500 items each, BF16)
 

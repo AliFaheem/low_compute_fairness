@@ -37,5 +37,4 @@ if [ "$PPLCHECK" = 1 ] && [ ! -f logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json 
     && mkdir -p logs/wanda_meta && mv models/qwen3-8b-wanda50-pplcheck/wanda_meta.json logs/wanda_meta/qwen3-8b-wanda50-pplcheck.json \
     && rmdir models/qwen3-8b-wanda50-pplcheck
 fi
-step uv run python scripts/compression/sync_calibration.py push   # calibration texts -> private HF data repo
 echo "=== $(date "+%F %T") CALIB QUEUE DONE"
