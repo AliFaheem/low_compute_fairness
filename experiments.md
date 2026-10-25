@@ -202,6 +202,21 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - **Protocol issue:** the first Urdu label `ا` is almost never chosen by 3 model families (Llama, Qalb, Ministral; 0–5%). A lone `ا` is an unnatural answer token. Proposed test: Urdu with A/B/C labels (about 5 min per model), or answer-text scoring.
 - Recommendation: keep **Qwen3-8B + Gemma-4-E4B** as the main Exp 1 models; skip Ministral; Qalb optional; test Urdu labels.
 
+### 25 Oct 2026, ~07:40: top tokens (Ministral, Qalb) and the Urdu A/B/C label test
+
+- Top-token analysis (the new `top` field):
+  - **Ministral**'s off-label probability is fill-in-the-blank formatting (`_`, `________`, `……`, `(`, `[`, `</s>`, and `The` in en). Almost no "Unknown" written as a word (≤0.3%), so unlike Gemma its low Unknown rate is not a scoring artifact.
+  - **Qalb** is almost fully compliant in en (letters 0.97). In `ur` it reaches for **Latin `b` (0.025) and `a` (0.016)**, plus a newline and `ج` (start of `جواب`).
+- New prompt variant **`ur_abc`** (commit `fd33817`): the Urdu prompt with Latin A/B/C labels; the instruction says `A، B، یا C`; same items as `ur` via the `data` key.
+  - The official `ur` template and its hash `d43553766b56` are unchanged.
+  - `run.py --lang` accepts `ur_abc`.
+- Qalb `ur` vs `ur_abc` (same 500 items):
+  - disambiguated 65.4 → **69.9**; ambiguous 7.1 → 8.7;
+  - order agreement **0.0 → 12.8**; mass 0.695 → 0.752;
+  - picked slots 0/19/81 → 8/65/27.
+- Conclusion: the dead first slot is caused by the `ا` label, and A/B/C gives modest gains. But position bias remains (now toward B) and Qalb's Urdu stays weak.
+- Next decision: test `ur_abc` on Qwen and Gemma (500-item pilots). If they improve, switch Urdu to A/B/C and re-run Urdu for their 5 variants (about 2–2.5 h). Otherwise keep ا/ب/پ as main and report `ur_abc` as a robustness check.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
