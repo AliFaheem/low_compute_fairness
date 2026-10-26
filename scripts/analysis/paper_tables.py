@@ -224,6 +224,11 @@ def main():
           "resamples; numbers ×100 unless noted. Bias scores: 0 = no bias, positive = stereotyped answers. "
           "† = disambiguated accuracy below 40% (bias not interpreted).", ""]
 
+    def delta(k, base, key):
+        d = boot.point(stats[k])[key] - boot.point(stats[base])[key]
+        lo, hi = ci(boot.samples(stats[k])[key] - boot.samples(stats[base])[key])
+        return d, lo, hi
+
     def cell(key):
         p, s = boot.point(stats[key]), boot.samples(stats[key])
         return p, s
@@ -256,9 +261,9 @@ def main():
             gb = json.load(open(meta)).get("memory_footprint_gb") if os.path.exists(meta) else None
             mem.append("–" if gb is None else f"{gb:.1f}")
         rows.append([v, *settings[v], *mem])
-    md.append(write("m1_setup", ["Variant", "Method", "Compression", "Calibration",
+    md.append(write("a0_setup", ["Variant", "Method", "Compression", "Calibration",
                                     *[f"Memory GB {MODEL_NAMES[m]}" for m in MODELS]], rows,
-                    "Table 1 (main). Compression settings",
+                    "Table A0. Compression settings",
                     "Mixed calibration = ⅓ C4 en + ⅓ FineWeb-2 Urdu + ⅓ Roman Urdu. Pruned models are stored dense, "
                     "so their memory equals BF16. – = not run or not recorded."))
 
@@ -282,6 +287,47 @@ def main():
     md.append(write("a2_bf16", ["Model", "Language", "Acc. ambig.", "Acc. disamb.", "Unknown (disamb.)", "s_amb",
                                 "s_dis", "Order-consistent"], rows, "Table A2. BF16 baselines (95% CI)",
                     "Order-consistent = same answer in all 3 option orders."))
+
+    # Table 1 (main, RQ1): bias benchmark of the uncompressed models across languages, with paired language gaps.
+    # Items are identical across languages, so ur − en and roman_ur − en use the same template resamples (paired).
+    keys1 = ["acc_dis", "acc_amb", "dir_amb", "s_amb", "s_dis", "gap"]
+    rows = []
+    for m in MODELS:
+        for l in LANGS:
+            k = run_key(m, "bf16", l)
+            p, s = cell(k)
+            r = [MODEL_NAMES[m] + ("†" if (m, l) in near_chance else ""), l]
+            for key in keys1:
+                lo, hi = ci(s[key])
+                r.append(f"{fmt(p[key])} [{fmt(lo)}, {fmt(hi)}]")
+            rows.append(r)
+    for l in ("ur", "roman_ur"):  # language gap vs English, mean over models, with models significantly above / below
+        r = ["Mean over models", f"{l} − en"]
+        for key in keys1:
+            ds = [delta(run_key(m, "bf16", l), run_key(m, "bf16", "en"), key) for m in MODELS]
+            r.append(f"{fmt(float(np.mean([d for d, _, _ in ds])))} (↑{sum(lo > 0 for _, lo, _ in ds)} "
+                     f"↓{sum(hi < 0 for _, _, hi in ds)})")
+        rows.append(r)
+    md.insert(2, write("m1_benchmark", ["Model", "Language", "Acc. disamb.", "Unknown (ambig.)", "Direction (ambig.)",
+                                        "s_amb", "s_dis", "Gap (disamb.)"], rows,
+                       "Table 1 (main, RQ1). Bias of the uncompressed (BF16) models across languages (95% CI)",
+                       "×100. Unknown (ambig.) = acc. ambig.; direction = bias among non-Unknown ambiguous answers "
+                       "(s_amb = (1 − Unknown) × direction); gap = disamb. accuracy when the answer fits the stereotype "
+                       "minus when it contradicts it. Last rows: paired language difference vs English, (↑a ↓b) = models "
+                       "whose CI is above / below 0."))
+
+    # Figure 3a data (RQ3): BF16 bias by category and language, mean over models
+    rows = []
+    for l in LANGS:
+        for cat in sorted(set(items.category)):
+            sub = sorted({items.template[i] for i in np.where(items.category == cat)[0]})
+            bcat = Bootstrap(len(items.templates), 1, seed=1, subset=sub)
+            pts = [bcat.point(stats[run_key(m, "bf16", l)]) for m in MODELS]
+            rows.append([l, cat, *(fmt(float(np.mean([p[x] for p in pts]))) for x in ("s_amb", "dir_amb", "s_dis", "gap")),
+                         *(fmt(p["s_amb"]) for p in pts)])
+    md.append(write("fig3a_bf16_categories", ["Language", "Category", "s_amb", "Direction (ambig.)", "s_dis", "Gap (disamb.)",
+                                              *[f"s_amb {MODEL_NAMES[m]}" for m in MODELS]], rows,
+                    "Figure 3a data (RQ3). BF16 bias by category and language (mean over models; per-model s_amb)"))
 
     # Table 4: main result, deltas vs BF16 (+ McNemar on correctness)
     rows, pvals = [], []
@@ -383,7 +429,7 @@ def main():
                       fmt(float(np.mean(dsum["s_dis"]))) if dsum["s_dis"] else ""]
             rows.append(r)
     hdr = ["Language", "Category"] + [x for g in GROUPS for x in (f"Δs_amb {g}", f"Δs_dis {g}")]
-    md.append(write("fig3_categories", hdr, rows, "Figure 3 data. Bias change by category (mean over models and variants in group)",
+    md.append(write("fig3b_categories", hdr, rows, "Figure 3b data (RQ3). Bias change by category (mean over models and variants in group)",
                     "Near-chance model–language pairs excluded."))
 
     # Table 8: calibration ablation, mixed minus C4 at the same sparsity
@@ -501,11 +547,6 @@ def main():
 
     # ---------------- main-body exhibits (compact): Table 2, Table 3, Figure 2; appendix A5, A10
 
-    def delta(k, base, key):
-        d = boot.point(stats[k])[key] - boot.point(stats[base])[key]
-        lo, hi = ci(boot.samples(stats[k])[key] - boot.samples(stats[base])[key])
-        return d, lo, hi
-
     def summary(pairs, key):
         """Mean delta over (run, reference) pairs, and how many are significantly up / down."""
         ds = [delta(k, b, key) for k, b in pairs]
@@ -530,10 +571,10 @@ def main():
             bf = [bias_flips(k, b) for k, b in pairs]
             rows.append([l, v] + [summary(pairs, x) for x in keys2]
                         + [fmt(float(np.mean([x for x, _ in bf]))), fmt(float(np.mean([y for _, y in bf])))])
-    md.insert(2, write("m2_main", ["Language", "Variant", "Δ acc. disamb.", "Δ Unknown (ambig.)",
+    md.insert(3, write("m2_main", ["Language", "Variant", "Δ acc. disamb.", "Δ Unknown (ambig.)",
                                    "Δ direction (ambig.)", "Δ s_amb", "Δ s_dis", "Δ gap (disamb.)", "Bias flips %",
                                    "Net shift to stereotype %"], rows,
-                       "Table 2 (main). Bias under compression, mean over models",
+                       "Table 2 (main, RQ2). Bias under compression, mean over models",
                        "×100, Δ vs each model's BF16; BF16 rows give absolute values. (↑a ↓b): models whose paired 95% "
                        "CI is above / below 0. Unknown (ambig.) = acc. ambig. Direction = bias among non-Unknown "
                        "ambiguous answers, so s_amb = (1 − Unknown) × direction. Gap = disamb. accuracy when the answer "
@@ -553,8 +594,8 @@ def main():
             r += [fmt(float(np.mean(fl)))] + [summary(pairs, x) for x in ("acc_dis", "s_amb", "s_dis")]
         rows.append(r)
     hdr = ["Sparsity"] + [x for l in LANGS for x in (f"{l} Δflip %", f"{l} Δacc.dis", f"{l} Δs_amb", f"{l} Δs_dis")]
-    md.insert(3, write("m3_calibration", hdr, rows,
-                       "Table 3 (main). Mixed en/ur/roman_ur vs English C4 calibration for Wanda (mixed − C4, mean over 5 models)",
+    md.insert(4, write("m3_calibration", hdr, rows,
+                       "Table 3 (main, RQ2). Mixed en/ur/roman_ur vs English C4 calibration for Wanda (mixed − C4, mean over 5 models)",
                        "×100. (↑a ↓b): models whose paired 95% CI of mixed − C4 is above / below 0. Δflip % = change in "
                        "flips vs BF16. Perplexity (C4 vs mixed) to add from the pruning logs. Per model: Table A6."))
 
