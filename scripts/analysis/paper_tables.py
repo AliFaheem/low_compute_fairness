@@ -229,8 +229,8 @@ def main():
                      int((m & items.scorable).sum())])
     rows.append(["Total", items.n, len(items.templates), int(items.ambig.sum()), int((~items.ambig).sum()),
                  int(items.neg.sum()), int((~items.neg).sum()), int(items.scorable.sum())])
-    md.append(write("t1_data", ["Category", "Items", "Templates", "Ambiguous", "Disambiguated", "Negative",
-                                "Non-negative", "Scorable for bias"], rows, "Table 1. PakBBQ subset",
+    md.append(write("a1_data", ["Category", "Items", "Templates", "Ambiguous", "Disambiguated", "Negative",
+                                "Non-negative", "Scorable for bias"], rows, "Table A1. PakBBQ subset",
                     "Same items in en, ur and roman_ur."))
 
     # Table 2: compression settings (memory from the runs' meta.json)
@@ -248,9 +248,9 @@ def main():
             gb = json.load(open(meta)).get("memory_footprint_gb") if os.path.exists(meta) else None
             mem.append("–" if gb is None else f"{gb:.1f}")
         rows.append([v, *settings[v], *mem])
-    md.append(write("t2_settings", ["Variant", "Method", "Compression", "Calibration",
+    md.append(write("m1_setup", ["Variant", "Method", "Compression", "Calibration",
                                     *[f"Memory GB {MODEL_NAMES[m]}" for m in MODELS]], rows,
-                    "Table 2. Compression settings",
+                    "Table 1 (main). Compression settings",
                     "Mixed calibration = ⅓ C4 en + ⅓ FineWeb-2 Urdu + ⅓ Roman Urdu. Pruned models are stored dense, "
                     "so their memory equals BF16. – = not run or not recorded."))
 
@@ -271,8 +271,8 @@ def main():
                 r.append(f"{fmt(p[key])} [{fmt(lo)}, {fmt(hi)}]")
             r.append(fmt(float(runs[k]["consistent"].mean())))
             rows.append(r)
-    md.append(write("t3_bf16", ["Model", "Language", "Acc. ambig.", "Acc. disamb.", "Unknown (disamb.)", "s_amb",
-                                "s_dis", "Order-consistent"], rows, "Table 3. BF16 baselines (95% CI)",
+    md.append(write("a2_bf16", ["Model", "Language", "Acc. ambig.", "Acc. disamb.", "Unknown (disamb.)", "s_amb",
+                                "s_dis", "Order-consistent"], rows, "Table A2. BF16 baselines (95% CI)",
                     "Order-consistent = same answer in all 3 option orders."))
 
     # Table 4: main result, deltas vs BF16 (+ McNemar on correctness)
@@ -300,9 +300,9 @@ def main():
     adj = holm(pvals)
     for r, p in zip(rows, adj):
         r.append("<0.001" if p < 0.001 else f"{p:.3f}")
-    md.append(write("t4_main", ["Language", "Model", "Variant", "Δ acc. ambig.", "Δ acc. disamb.", "Δ s_amb", "Δ s_dis",
+    md.append(write("a3_full", ["Language", "Model", "Variant", "Δ acc. ambig.", "Δ acc. disamb.", "Δ s_amb", "Δ s_dis",
                                 "Flip %", "McNemar p (Holm)"], rows,
-                    "Table 4. Effect of compression vs the same model's BF16 (95% paired CI)",
+                    "Table A3. Full results: each model and variant vs its BF16 (95% paired CI)",
                     "* = CI excludes 0. McNemar: paired correctness, Holm-corrected over all rows."))
 
     # Table 5: flips by direction, with the noise floor
@@ -328,9 +328,9 @@ def main():
             for v, k in entries:
                 if k in runs:
                     rows.append([l, MODEL_NAMES[m], v, *(fmt(x) for x in flip_parts(k, base))])
-    md.append(write("t5_flips", ["Language", "Model", "Variant", "Flip % (all)", "Flip % ambig.", "Flip % disamb.",
+    md.append(write("a4_flips", ["Language", "Model", "Variant", "Flip % (all)", "Flip % ambig.", "Flip % disamb.",
                                  "→ biased (% of flips)", "biased → other group", "→ Unknown", "Unknown →"], rows,
-                    "Table 5. Answer flips vs BF16, by direction",
+                    "Table A4. Answer flips vs BF16, by direction (with noise floor)",
                     "Direction shares are % of flipped items; → biased counts only bias-scorable items."))
 
     # Table 6: language comparison, averaged over models (BF16 runs exist for every model and language)
@@ -348,7 +348,7 @@ def main():
             r += [fmt(float(np.mean(fl))) if fl else "", fmt(float(np.mean(ds))) if ds else "", len(fl)]
         rows.append(r)
     hdr = ["Variant"] + [x for l in LANGS for x in (f"Flip % {l}", f"|Δs| {l}", f"n {l}")]
-    md.append(write("t6_languages", hdr, rows, "Table 6. Compression effect by language (mean over models)",
+    md.append(write("fig1a_flips", hdr, rows, "Figure 1a data. Flip rate and bias shift by variant and language (mean over models)",
                     "|Δs| = |Δs_amb| + |Δs_dis| vs BF16, ×100. n = models averaged."))
 
     # Table 7: category breakdown, pooled over models and variants in each compression group
@@ -373,7 +373,7 @@ def main():
                       fmt(float(np.mean(dsum["s_dis"]))) if dsum["s_dis"] else ""]
             rows.append(r)
     hdr = ["Language", "Category"] + [x for g in GROUPS for x in (f"Δs_amb {g}", f"Δs_dis {g}")]
-    md.append(write("t7_categories", hdr, rows, "Table 7. Bias change by category (mean over models and variants in group)",
+    md.append(write("fig3_categories", hdr, rows, "Figure 3 data. Bias change by category (mean over models and variants in group)",
                     "Near-chance model–language pairs excluded."))
 
     # Table 8: calibration ablation, mixed minus C4 at the same sparsity
@@ -394,9 +394,9 @@ def main():
                 fm = (runs[km]["answer"] != runs[base]["answer"]).mean()
                 r += [fmt(float(fc)), fmt(float(fm))]
                 rows.append(r)
-    md.append(write("t8_calibration", ["Language", "Model", "Sparsity", "Δ acc. disamb. (mix − C4)", "Δ s_amb (mix − C4)",
+    md.append(write("a6_calibration", ["Language", "Model", "Sparsity", "Δ acc. disamb. (mix − C4)", "Δ s_amb (mix − C4)",
                                        "Δ s_dis (mix − C4)", "Flip % C4", "Flip % mix"], rows,
-                    "Table 8. Wanda calibration language: mixed en/ur/roman_ur vs English C4 (95% paired CI)",
+                    "Table A6. Calibration language per model: mixed vs C4 (95% paired CI)",
                     "Flip % is vs the same model's BF16."))
 
     # Table 9: language adaptation (Llama base vs Urdu-adapted Qalb, Alif)
@@ -416,7 +416,7 @@ def main():
             rows.append(r)
     hdr = ["Language", "Variant"] + [x for m in fam for x in (f"{MODEL_NAMES[m]} acc. disamb.",
                                                               f"{MODEL_NAMES[m]} s_dis", f"{MODEL_NAMES[m]} flip %")]
-    md.append(write("t9_adaptation", hdr, rows, "Table 9. Language adaptation: Llama-3.1-8B vs Urdu-adapted Qalb and Alif"))
+    md.append(write("a7_adaptation", hdr, rows, "Table A7. Language adaptation: Llama-3.1-8B vs Urdu-adapted Qalb and Alif"))
 
     # Table 10: bias vs abstention / accuracy (per run deltas and their correlations)
     pts = []
@@ -433,8 +433,8 @@ def main():
     rows = []
     for j, nm in enumerate(names):
         rows.append([nm, f"{np.corrcoef(arr[:, j], arr[:, 3])[0, 1]:.2f}", f"{np.corrcoef(arr[:, j], arr[:, 4])[0, 1]:.2f}"])
-    md.append(write("t10_abstention", ["Change vs BF16", "Pearson r with Δ s_amb", "Pearson r with Δ s_dis"], rows,
-                    "Table 10. Do bias changes track accuracy or abstention changes?",
+    md.append(write("a9_abstention", ["Change vs BF16", "Pearson r with Δ s_amb", "Pearson r with Δ s_dis"], rows,
+                    "Table A9. Do bias changes track accuracy or abstention changes?",
                     f"Over {len(pts)} compressed runs (all models, variants, languages)."))
 
     # Table A1: option-order consistency and label mass
@@ -445,8 +445,8 @@ def main():
             k = run_key(m, "bf16", l)
             r += [fmt(float(runs[k]["consistent"].mean())), fmt(float(runs[k]["mass"].mean()))] if k in runs else ["", ""]
         rows.append(r)
-    md.append(write("ta1_consistency", ["Model"] + [x for l in ALL_LANGS for x in (f"Consistent % {l}", f"Label mass {l}")],
-                    rows, "Table A1. BF16 option-order consistency and probability mass on the 3 labels"))
+    md.append(write("a2b_consistency", ["Model"] + [x for l in ALL_LANGS for x in (f"Consistent % {l}", f"Label mass {l}")],
+                    rows, "Table A2b. BF16 option-order consistency and probability mass on the 3 labels"))
 
     # Table A2: Urdu letter labels ur vs ur_abc (slot shares)
     rows = []
@@ -459,9 +459,9 @@ def main():
             shares = np.bincount(runs[k]["slot"].ravel(), minlength=3) / runs[k]["slot"].size
             rows.append([MODEL_NAMES[m], l, fmt(p["acc_amb"]), fmt(p["acc_dis"]), fmt(float(runs[k]["consistent"].mean())),
                          *(fmt(float(x)) for x in shares)])
-    md.append(write("ta2_urdu_labels", ["Model", "Prompt", "Acc. ambig.", "Acc. disamb.", "Consistent %",
+    md.append(write("a8_urdu_labels", ["Model", "Prompt", "Acc. ambig.", "Acc. disamb.", "Consistent %",
                                         "1st slot %", "2nd slot %", "3rd slot %"], rows,
-                    "Table A2. Urdu with ا/ب/پ labels (ur) vs Latin A/B/C (ur_abc), BF16",
+                    "Table A8. Urdu with ا/ب/پ labels (ur) vs Latin A/B/C (ur_abc), BF16",
                     "Slot shares: how often the model picks the option shown first, second, third (33% each if position-blind)."))
 
     # Table A3: flips vs BF16 confidence (pooled over compressed runs)
@@ -485,9 +485,126 @@ def main():
         rows.append([l, *(fmt(float(fl[b] / cnt[b])) if cnt[b] else "" for b in range(len(edges) - 1)),
                      *(f"{int(cnt[b])}" for b in range(len(edges) - 1))])
     labels = [f"{edges[b]:.2f}–{min(edges[b + 1], 1):.2f}" for b in range(len(edges) - 1)]
-    md.append(write("ta3_confidence", ["Language", *[f"Flip % conf {x}" for x in labels], *[f"n {x}" for x in labels]],
-                    rows, "Table A3. Flip rate by BF16 confidence (probability of the BF16 answer)",
+    md.append(write("fig1b_confidence", ["Language", *[f"Flip % conf {x}" for x in labels], *[f"n {x}" for x in labels]],
+                    rows, "Figure 1b data. Flip rate by BF16 confidence (probability of the BF16 answer)",
                     "Pooled over all models and compressed variants."))
+
+    # ---------------- main-body exhibits (compact): Table 2, Table 3, Figure 2; appendix A5, A10
+
+    def delta(k, base, key):
+        d = boot.point(stats[k])[key] - boot.point(stats[base])[key]
+        lo, hi = ci(boot.samples(stats[k])[key] - boot.samples(stats[base])[key])
+        return d, lo, hi
+
+    def summary(pairs, key):
+        """Mean delta over (run, reference) pairs, and how many are significantly up / down."""
+        ds = [delta(k, b, key) for k, b in pairs]
+        up = sum(lo > 0 for _, lo, _ in ds)
+        down = sum(hi < 0 for _, _, hi in ds)
+        return f"{fmt(float(np.mean([d for d, _, _ in ds])))} (↑{up} ↓{down})"
+
+    # Table 2 (main): mean over models per variant and language; BF16 row in absolute values
+    rows = []
+    r = ["BF16 (absolute)"]
+    for l in LANGS:
+        pts = [boot.point(stats[run_key(m, "bf16", l)]) for m in MODELS if have(m, "bf16", l)]
+        r += ["–"] + [fmt(float(np.mean([p[x] for p in pts]))) for x in ("acc_dis", "s_amb", "s_dis")]
+    rows.append(r)
+    for v in ["int8", "nf4", "awq", "wanda25", "wanda50"]:  # mixed-calibration pruning is Table 3
+        r = [v]
+        for l in LANGS:
+            pairs = [(run_key(m, v, l), run_key(m, "bf16", l)) for m in MODELS if have(m, v, l)]
+            flips = [(runs[k]["answer"] != runs[b]["answer"]).mean() for k, b in pairs]
+            r += [fmt(float(np.mean(flips)))] + [summary(pairs, x) for x in ("acc_dis", "s_amb", "s_dis")]
+        rows.append(r)
+    hdr = ["Variant"] + [x for l in LANGS for x in (f"{l} flip %", f"{l} Δacc.dis", f"{l} Δs_amb", f"{l} Δs_dis")]
+    md.insert(2, write("m2_main", hdr, rows, "Table 2 (main). Effect of compression, mean over models",
+                       "Δ vs each model's BF16, ×100. (↑a ↓b): models whose paired 95% CI is above / below 0. "
+                       "AWQ: 4 models (no Gemma). BF16 row: absolute acc. disamb., s_amb, s_dis."))
+
+    # Table 3 (main): calibration language, mixed minus C4 at the same sparsity (paired per model)
+    rows = []
+    for pct in ("25", "50"):
+        r = [f"{pct}%"]
+        for l in LANGS:
+            pairs = [(run_key(m, f"wanda{pct}mix", l), run_key(m, f"wanda{pct}", l)) for m in MODELS
+                     if have(m, f"wanda{pct}mix", l) and have(m, f"wanda{pct}", l)]
+            fl = [(runs[km]["answer"] != runs[run_key(m, "bf16", l)]["answer"]).mean()
+                  - (runs[kc]["answer"] != runs[run_key(m, "bf16", l)]["answer"]).mean()
+                  for m, (km, kc) in zip([m for m in MODELS if have(m, f"wanda{pct}mix", l)], pairs)]
+            r += [fmt(float(np.mean(fl)))] + [summary(pairs, x) for x in ("acc_dis", "s_amb", "s_dis")]
+        rows.append(r)
+    hdr = ["Sparsity"] + [x for l in LANGS for x in (f"{l} Δflip %", f"{l} Δacc.dis", f"{l} Δs_amb", f"{l} Δs_dis")]
+    md.insert(3, write("m3_calibration", hdr, rows,
+                       "Table 3 (main). Mixed en/ur/roman_ur vs English C4 calibration for Wanda (mixed − C4, mean over 5 models)",
+                       "×100. (↑a ↓b): models whose paired 95% CI of mixed − C4 is above / below 0. Δflip % = change in "
+                       "flips vs BF16. Perplexity (C4 vs mixed) to add from the pruning logs. Per model: Table A6."))
+
+    # Figure 2 data: one point per compressed run
+    rows = []
+    for l in LANGS:
+        for m in MODELS:
+            base = run_key(m, "bf16", l)
+            for v in COMPRESSED:
+                k = run_key(m, v, l)
+                if k in stats and base in stats:
+                    pv, pb = boot.point(stats[k]), boot.point(stats[base])
+                    group = next(g for g, vs in GROUPS.items() if v in vs)
+                    rows.append([l, MODEL_NAMES[m], v, group, fmt(pv["acc_dis"] - pb["acc_dis"]),
+                                 fmt(pv["s_amb"] - pb["s_amb"]), fmt(pv["s_dis"] - pb["s_dis"]),
+                                 fmt(float((runs[k]["answer"] != runs[base]["answer"]).mean()))])
+    md.append(write("fig2_bias_vs_acc", ["Language", "Model", "Variant", "Group", "Δ acc. disamb.", "Δ s_amb", "Δ s_dis",
+                                         "Flip %"], rows, "Figure 2 data. Bias change vs accuracy change, per run"))
+
+    # Table A5: categories per model (Δ s_amb, compression groups)
+    rows = []
+    for l in LANGS:
+        for cat in sorted(set(items.category)):
+            sub = sorted({items.template[i] for i in np.where(items.category == cat)[0]})
+            bcat = Bootstrap(len(items.templates), 1, seed=1, subset=sub)
+            for m in MODELS:
+                base = run_key(m, "bf16", l)
+                r = [l, cat, MODEL_NAMES[m]]
+                for g, vs in GROUPS.items():
+                    ds = [bcat.point(stats[run_key(m, v, l)])["s_amb"] - bcat.point(stats[base])["s_amb"]
+                          for v in vs if have(m, v, l)]
+                    r.append(fmt(float(np.mean(ds))) if ds else "")
+                rows.append(r)
+    md.append(write("a5_categories_per_model", ["Language", "Category", "Model", *[f"Δs_amb {g}" for g in GROUPS]], rows,
+                    "Table A5. Δ s_amb by category and model (mean over variants in group)"))
+
+    # Table A10: answer-format compliance at BF16, from the stored top-10 next tokens
+    rows = []
+    for m in MODELS:
+        for l in ALL_LANGS:
+            k = run_key(m, "bf16", l)
+            path = os.path.join(common.RUNS_DIR, k, "preds.jsonl")
+            src = "bf16"
+            with open(path, encoding="utf-8") as f:
+                if '"top"' not in f.readline():
+                    k, src = run_key(m, "bf16", l, "rerun"), "bf16 rerun"
+                    path = os.path.join(common.RUNS_DIR, k, "preds.jsonl")
+            if not os.path.exists(path):
+                continue
+            label_ids = set(json.load(open(os.path.join(os.path.dirname(path), "meta.json")))["label_token_ids"])
+            n = off = 0
+            off_tokens = collections.Counter()
+            for line in open(path, encoding="utf-8"):
+                row = json.loads(line)
+                if "top" not in row:
+                    continue
+                n += 1
+                tid, text, _ = row["top"][0]
+                if tid not in label_ids:
+                    off += 1
+                    off_tokens[text.strip() or repr(text)] += 1
+            top3 = "; ".join(f"{t} {100 * c / max(n, 1):.1f}%" for t, c in off_tokens.most_common(3))
+            rows.append([MODEL_NAMES[m], l, src, fmt(float(runs[k]["mass"].mean())), fmt(off / max(n, 1)), top3])
+    md.append(write("a10_format", ["Model", "Language", "Run", "Label mass %", "Top token not a label %",
+                                   "Most frequent non-label top tokens (% of prompts)"], rows,
+                    "Table A10. Answer-format compliance at BF16",
+                    "From the 10 most likely next tokens stored per prompt (Qwen: its BF16 rerun, since the first "
+                    "runs predate this field). A model that follows the format puts its top token on a label."))
 
     open(os.path.join(OUT, "tables.md"), "w", encoding="utf-8").write("\n".join(md))
     print(f"-> {OUT}/tables.md and {OUT}/tables/*.csv")
