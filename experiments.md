@@ -500,6 +500,21 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **Alif AWQ complete** × 4 languages on Machine 1. Perplexity after: en 8.156, ur 4.001, roman_ur 20.632, vs BF16 7.677 / 3.85 / 18.294 (+6% / +4% / +13%).
 - Machine 1 now runs Llama AWQ (tmux `awq_llama`, snapshot from cache, no download); it auto-stops after it, at about 01:40 UTC (06:40 PKT).
 
+### 26 Oct 2026, 06:50 PKT (01:51 UTC): ALL MACHINES STOPPED, Exp 1 complete (except Gemma AWQ)
+
+- **Machine 1** finished Llama AWQ (× 4 languages; perplexity after en 7.201, ur 3.861, roman_ur 14.332) and auto-stopped at about 01:50 UTC (SSH refused at 01:51). Machines 2 and 3 had already auto-stopped (22:56 and about 00:17 UTC).
+- **Grid (from the HF results metas): 156 runs done**, 12 on hold (Exp 2 students), 4 pending (Gemma AWQ × 4 languages, dropped as a gptqmodel limitation).
+  - Complete: Qwen3-8B, Qalb, Alif, Llama-3.1-8B × 8 variants (bf16, int8, nf4, wanda50, wanda25, wanda50mix, wanda25mix, awq) × 4 languages; Gemma-4-E4B × 7 variants (no AWQ).
+  - Plus the BF16 noise-floor reruns (Qwen, Gemma) and the pilots.
+- **Still to do (no GPU needed):**
+  - Collect `logs/calibration/*.jsonl`, `logs/wanda_meta/`, `logs/awq_meta/`, `logs/quant_check_*.json` from the stopped machines (they are on their disks; restart a machine to copy them, or ask before destroying).
+  - `sync_calibration.py` merge/push/manifest.
+  - Then local analysis.
+- **Decisions for the user:**
+  - destroy or keep the stopped instances (storage is still billed while stopped);
+  - remove Gemma AWQ from the grid;
+  - Exp 2 students (on hold).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
