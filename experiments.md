@@ -568,6 +568,18 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - The figures were checked visually; fixed a clipped bar (y-limit 35%) and the two-meanings-of-blue problem.
 - New RQ3 bullet: in Urdu, Appearance (22.0) and Disability (18.9) lead and Age falls to 10.9; in English, Appearance 43.5, SES 34.6, Age 33.6.
 
+### 26 Oct 2026: examples and metric definitions in the paper
+
+- New `scripts/analysis/paper_examples.py` picks examples by stated rules (ties -> shortest item) and splices them into `paper/icse_overleaf/main.tex`. The tables of examples are:
+  - **Table "Examples of bias churn"** (main paper, RQ2):
+    - Example 1 (Religion, Qwen3-8B): BF16 answers Unknown in all 4 conditions; compressed variants give the stereotype-consistent answer in 10 of 20 cells.
+    - Example 2 (SES, Llama-3.1-8B): the reverse.
+  - Appendix: one item per category (English + Roman Urdu).
+  - Appendix: Gemma's Urdu format failure. Top next token `<eos>` 31.7%; only 5.4% probability on the three labels.
+  - Appendix: Llama's Urdu-letter position artifact. Always the 2nd screen position with ا/ب/پ; with A/B/C, the same option in all 3 orders.
+- New appendix section "How each metric and table is computed": answer extraction, S/O/U classification, every metric with a worked example, bootstrap and significance, and how each table and figure is built.
+- **Data issue found:** in the Roman Urdu Age example, "the older man" became "Bura aadmi" ("bad man") instead of "Burha aadmi". It is a transliteration error and must go to the Roman Urdu cleanup / native-speaker check.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
