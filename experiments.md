@@ -548,6 +548,26 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - INT8 churn is lower with Latin labels (4.9% newly stereotyped vs 6.8%; noise floor 1.4% vs 2.5%), so part of the Urdu churn is the label artifact.
 - The category heatmap now shows BF16, Δ4-bit and ΔP50 per condition (INT8 and P25 are in the appendix CSV) to fit the LNCS width.
 
+### 26 Oct 2026: paper folder restructured (user)
+
+- User: no CSVs in the Overleaf project, and no separate .tex files for tables.
+- `paper_latex.py` now splices the tables (and Figure 2's r, as `\corrR`) into `main.tex` between `% <auto:NAME>` / `% </auto:NAME>` marker lines; the rest of `main.tex` is hand-written and never touched. It no longer writes `tables/` or `results/`. Raw CSVs stay in `results/analysis/` only.
+- Figures are spliced into `main.tex` the same way (pgfplots with embedded coordinates); `figdata/*.dat` now go to `results/analysis/figdata/`. Paper folder is just `main.tex` + `refs.bib` + the LNCS template files (no subfolders: Overleaf Workshop failed to upload files into subfolders).
+- Venue format: Springer LNCS (user: this is the ICSE format to use); do not convert to IEEE.
+- Overleaf sync caveat (Overleaf Workshop 0.15.10 local replica): new and deleted files sync automatically while the replica window is open, but edits to existing files only sync on an editor save in that window; edits written from outside (scripts, other sessions) need a save there. When the replica window starts, it overwrites local copies of files that exist on Overleaf.
+- Overleaf Workshop 0.15.10 was patched locally (user approved): external edits now push (added a change watcher), and new-file uploads were broken (sent "[object FormData]" → 400 invalid_upload_request), fixed with undici FormData. Re-apply after an extension update (grep `PATCH (low_compute_fairness)`).
+
+### 26 Oct 2026: new paper folder `paper/icse_overleaf/` (user)
+
+- The user removed the old synced folder and asked for a clean Overleaf project to paste in by hand: `main.tex` (LNCS, bullets only), `refs.bib`, `fig/`.
+- Tables are spliced into main.tex by `scripts/analysis/paper_latex.py` (markers `% <auto:...>`); its pgfplots figure code was removed.
+- New `scripts/analysis/paper_figures.py` draws the 3 figures as vector PDFs. It uses matplotlib through `uv run --with matplotlib`, so the project env and lock are unchanged.
+  - Figure 1: bias churn per condition (2 panels) and flips by confidence.
+  - Figure 2: bias vs accuracy, 156 runs, r = 0.90.
+  - Figure 3: category heatmaps. BF16 levels use a violet ramp, so blue means only "less biased" in the diverging panel beside it.
+- The figures were checked visually; fixed a clipped bar (y-limit 35%) and the two-meanings-of-blue problem.
+- New RQ3 bullet: in Urdu, Appearance (22.0) and Disability (18.9) lead and Age falls to 10.9; in English, Appearance 43.5, SES 34.6, Age 33.6.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
