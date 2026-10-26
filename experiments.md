@@ -493,6 +493,13 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - **tmux prefix match deadlock**: `tmux has-session -t awq` matches any session starting with `awq`, so `awq_alif` was waiting on itself. Alif AWQ was started directly at 22:53. `autostop.sh` now uses exact names (`-t "=name"`); the machines' running copies still use the old version, but their session names have no prefix clash.
 - Machine 1 now runs Alif AWQ (`awq_alif`), then Llama AWQ (`awq_llama`); autostop waits for both. Expected stop about 06:30 PKT.
 
+### 26 Oct 2026, 05:20 PKT (00:21 UTC): Machine 3 auto-stopped (Llama prune part done); Alif AWQ done
+
+- **Llama-3.1-8B: all 7 Exp 1 + calibration variants complete** × 4 languages (bf16, int8, nf4 on Machine 1; wanda50, wanda25, wanda50mix, wanda25mix on Machine 3). Only AWQ is left.
+- Machine 3 finished `wanda25mix` at about 00:12 UTC and auto-stopped (SSH refused at 00:21, as expected). It ran no AWQ: Alif AWQ had been moved to Machine 1.
+- **Alif AWQ complete** × 4 languages on Machine 1. Perplexity after: en 8.156, ur 4.001, roman_ur 20.632, vs BF16 7.677 / 3.85 / 18.294 (+6% / +4% / +13%).
+- Machine 1 now runs Llama AWQ (tmux `awq_llama`, snapshot from cache, no download); it auto-stops after it, at about 01:40 UTC (06:40 PKT).
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
