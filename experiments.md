@@ -540,6 +540,14 @@ Running record of what was run, where, what came out, and what was decided. Meas
 - `main.tex`: final tables and figures, with bullet points per section (no prose yet), and TODOs where decisions or checks are pending. `refs.bib`: 14 entries, the 2026 preprints marked VERIFY. Main document in Overleaf must be set to `main.tex`. Not compiled locally (no LaTeX installed).
 - The research questions were refined with the user (benchmark across languages; compression across languages; groups); see `docs/analysis_plan.md`.
 
+### 26 Oct 2026: both Urdu label conditions reported (user)
+
+- User: keep both `ur` (ا/ب/پ labels) and `ur_abc` (Latin A/B/C). Both analysis scripts now treat 4 conditions (en, ur, ur_abc, roman_ur). In the figures, Urdu (A/B/C) shares Urdu's colour, with hollow markers and dashed lines: a fourth hue fails the all-pairs colour-vision check.
+- New numbers:
+  - Latin labels raise Urdu accuracy (+2.0, 4 models up) with little bias change (s_amb +1.8, s_dis +1.4, mostly n.s.).
+  - INT8 churn is lower with Latin labels (4.9% newly stereotyped vs 6.8%; noise floor 1.4% vs 2.5%), so part of the Urdu churn is the label artifact.
+- The category heatmap now shows BF16, Δ4-bit and ΔP50 per condition (INT8 and P25 are in the appendix CSV) to fit the LNCS width.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |

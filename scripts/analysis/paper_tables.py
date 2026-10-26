@@ -28,8 +28,8 @@ MODEL_NAMES = {"qwen3-8b": "Qwen3-8B", "gemma-4-e4b": "Gemma-4-E4B", "llama-3.1-
                "qalb-1.0-8b": "Qalb-1.0-8B", "alif-1.0-8b": "Alif-1.0-8B"}
 VARIANTS = ["bf16", "int8", "nf4", "awq", "wanda25", "wanda50", "wanda25mix", "wanda50mix"]
 COMPRESSED = VARIANTS[1:]
-LANGS = ["en", "ur", "roman_ur"]
-ALL_LANGS = LANGS + ["ur_abc"]
+LANGS = ["en", "ur", "ur_abc", "roman_ur"]  # ur_abc: Urdu items with Latin A/B/C labels (both reported)
+ALL_LANGS = LANGS
 GROUPS = {"8-bit": ["int8"], "4-bit": ["nf4", "awq"], "prune 25%": ["wanda25", "wanda25mix"],
           "prune 50%": ["wanda50", "wanda50mix"]}
 NEAR_CHANCE = 0.40  # disambiguated accuracy below this: bias scores not interpreted

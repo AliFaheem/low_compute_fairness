@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paper_tables as pt  # noqa: E402
 
 PAPER = "paper/bias_icse_responsible_ai"
-LANG_TEX = {"en": "English", "ur": "Urdu", "roman_ur": "Roman Urdu"}
+LANG_TEX = {"en": "English", "ur": "Urdu", "ur_abc": "Urdu (A/B/C)", "roman_ur": "Roman Urdu"}
 VAR_TEX = {"bf16": "BF16", "int8": "INT8", "nf4": "NF4", "awq": "AWQ", "wanda25": "Wanda 25\\%",
            "wanda50": "Wanda 50\\%", "wanda25mix": "Wanda 25\\% (mix)", "wanda50mix": "Wanda 50\\% (mix)"}
 CAT_TEX = {"Age": "Age", "Disability_status": "Disability", "ENG-linguistic(language_formality_biases)": "Lang.\\ formality",
@@ -97,12 +97,12 @@ def table_benchmark(c):
             out.append(f"{name} & {LANG_TEX[l]} & " + " & ".join(cells) + r" \\")
         out.append(r"\addlinespace[2pt]")
     out[-1] = r"\midrule"
-    for l in ("ur", "roman_ur"):
+    for l, ref in (("ur", "en"), ("ur_abc", "en"), ("roman_ur", "en"), ("ur_abc", "ur")):
         cells = []
         for metric in metrics:
-            ds = [c.delta(c.key(m, "bf16", l), c.key(m, "bf16", "en"), metric) for m in pt.MODELS]
+            ds = [c.delta(c.key(m, "bf16", l), c.key(m, "bf16", ref), metric) for m in pt.MODELS]
             cells.append(num(float(np.mean([d for d, _, _ in ds]))) + counts(ds))
-        out.append(f"\\multicolumn{{2}}{{@{{}}l}}{{{LANG_TEX[l]} $-$ English}} & " + " & ".join(cells) + r" \\")
+        out.append(f"\\multicolumn{{2}}{{@{{}}l}}{{{LANG_TEX[l]} $-$ {LANG_TEX[ref]}}} & " + " & ".join(cells) + r" \\")
     out += [r"\bottomrule", r"\end{tabular}"]
     return "\n".join(out)
 
@@ -174,15 +174,17 @@ def heat_div(v, vmax=20):
 
 
 def table_categories(c):
-    """Figure 3 as a heatmap table: BF16 s_amb per language, then mean Δ s_amb per compression group."""
+    """Figure 3 as a heatmap table: per condition, BF16 s_amb and mean Δ s_amb under 4-bit and 50% pruning.
+    INT8 and 25% pruning move little and are left to the appendix CSV (fig3b_categories.csv) to keep LNCS width."""
     items = c.items
     cats = sorted(set(items.category))
-    groups = {"INT8": ["int8"], "4-bit": ["nf4", "awq"], "P25": ["wanda25", "wanda25mix"], "P50": ["wanda50", "wanda50mix"]}
-    col = "c" * 3 + ("|" + "c" * 4) * 3
-    out = [r"\setlength{\tabcolsep}{2pt}", f"\\begin{{tabular}}{{@{{}}l|{col}@{{}}}}", r"\toprule",
-           r" & \multicolumn{3}{c|}{BF16 $s_\text{amb}$} & \multicolumn{4}{c|}{$\Delta s_\text{amb}$ English} & "
-           r"\multicolumn{4}{c|}{$\Delta s_\text{amb}$ Urdu} & \multicolumn{4}{c}{$\Delta s_\text{amb}$ Roman Urdu} \\",
-           r"Category & en & ur & ro & " + " & ".join(list(groups) * 3) + r" \\", r"\midrule"]
+    groups = {"4-bit": ["nf4", "awq"], "P50": ["wanda50", "wanda50mix"]}
+    short = {"en": "English", "ur": "Urdu", "ur_abc": "Urdu (A/B/C)", "roman_ur": "Roman Urdu"}
+    col = "|".join(["ccc"] * len(pt.LANGS))
+    out = [r"\setlength{\tabcolsep}{2.5pt}", f"\\begin{{tabular}}{{@{{}}l|{col}@{{}}}}", r"\toprule",
+           " & " + " & ".join(f"\\multicolumn{{3}}{{c{'|' if k < len(pt.LANGS) - 1 else ''}}}{{{short[l]}}}"
+                              for k, l in enumerate(pt.LANGS)) + r" \\",
+           r"Category & " + " & ".join([r"BF16 & $\Delta$4-bit & $\Delta$P50"] * len(pt.LANGS)) + r" \\", r"\midrule"]
     for cat in cats:
         sub = sorted({items.template[i] for i in np.where(items.category == cat)[0]})
         b = pt.Bootstrap(len(items.templates), 1, seed=1, subset=sub)
@@ -190,7 +192,6 @@ def table_categories(c):
         for l in pt.LANGS:
             v = 100 * float(np.mean([b.point(c.stats[c.key(m, "bf16", l)])["s_amb"] for m in pt.MODELS]))
             cells.append(f"{heat_seq(v)}{v:.1f}".replace("-", "$-$"))
-        for l in pt.LANGS:
             for g, vs in groups.items():
                 ds = [b.point(c.stats[c.key(m, v, l)])["s_amb"] - b.point(c.stats[c.key(m, "bf16", l)])["s_amb"]
                       for m in pt.MODELS for v in vs if c.has(m, v, l)]
@@ -265,14 +266,17 @@ AXIS = ("axis line style={draw=cAxis}, tick style={draw=cAxis}, major grid style
         "tick label style={font=\\scriptsize, text=black!75}, label style={font=\\scriptsize}, "
         "legend style={font=\\scriptsize, draw=none, fill=none}")
 VAR_SHORT = {"int8": "INT8", "nf4": "NF4", "awq": "AWQ", "wanda25": "W25", "wanda50": "W50"}
-LANG_STYLE = {"en": ("cEn", "*"), "ur": ("cUr", "square*"), "roman_ur": ("cRo", "triangle*")}
+# Urdu with Latin labels shares Urdu's hue (same language), hollow markers and dashed lines tell them apart;
+# a fourth hue would fail the all-pairs colour-vision check.
+LANG_STYLE = {"en": ("cEn", "*", "solid"), "ur": ("cUr", "square*", "solid"), "ur_abc": ("cUr", "square", "densely dashed"),
+              "roman_ur": ("cRo", "triangle*", "solid")}
 
 
 def fig_bias_flips(c):
     """Figure 1a: per language, % of items newly given / no longer given the biased answer; dashed = noise floor."""
     out = [r"\begin{tikzpicture}",
-           r"\begin{groupplot}[group style={group size=3 by 1, horizontal sep=0.35cm, y descriptions at=edge left},"
-           r" width=0.395\textwidth, height=4.2cm, ybar=0.6pt, bar width=4pt, ymin=0, ymax=30, ymajorgrids,"
+           r"\begin{groupplot}[group style={group size=2 by 2, horizontal sep=0.35cm, vertical sep=0.9cm, y descriptions at=edge left, x descriptions at=edge bottom},"
+           r" width=0.56\textwidth, height=3.6cm, ybar=0.6pt, bar width=5pt, ymin=0, ymax=30, ymajorgrids,"
            r" symbolic x coords={" + ",".join(MAIN_VARIANTS) + r"}, xtick=data,"
            r" xticklabels={" + ",".join(VAR_SHORT[v] for v in MAIN_VARIANTS) + r"}, enlarge x limits=0.15,"
            r" ylabel={\% of items}, " + AXIS + "]"]
@@ -293,7 +297,7 @@ def fig_bias_flips(c):
         if j == 0:
             out += [r"\addlegendentry{newly given the biased answer}", r"\addlegendentry{no longer given it}",
                     r"\addlegendimage{cMuted, densely dashed, thick}\addlegendentry{noise floor (BF16 rerun)}"]
-    out += [r"\end{groupplot}", r"\node[anchor=north] at ([yshift=-0.75cm]group c2r1.south) {\pgfplotslegendfromname{f1leg}};",
+    out += [r"\end{groupplot}", r"\node[anchor=north] at ([yshift=-0.75cm]$(group c1r2.south)!0.5!(group c2r2.south)$) {\pgfplotslegendfromname{f1leg}};",
             r"\end{tikzpicture}"]
     return "\n".join(out)
 
@@ -317,9 +321,10 @@ def fig_confidence(c):
                     for b in range(4):
                         fl[b] += flip[bins == b].sum()
                         cnt[b] += (bins == b).sum()
-        col, mark = LANG_STYLE[l]
+        col, mark, dash = LANG_STYLE[l]
         coords = " ".join(f"({b},{100 * fl[b] / max(cnt[b], 1):.2f})" for b in range(4))
-        out.append(f"\\addplot[{col}, line width=1pt, mark={mark}, mark size=2.2pt] coordinates {{{coords}}};")
+        out.append(f"\\addplot[{col}, {dash}, line width=1pt, mark={mark}, mark size=2.2pt, mark options={{solid}}] "
+                   f"coordinates {{{coords}}};")
         out.append(f"\\addlegendentry{{{LANG_TEX[l]}}}")
     out += [r"\end{axis}", r"\end{tikzpicture}"]
     return "\n".join(out)
@@ -332,17 +337,19 @@ def fig_scatter(c):
            r" xlabel={Accuracy, disambiguated (\%)}, ylabel={$s_\text{amb}$ ($\times100$)}, legend pos=north west, "
            + AXIS + "]"]
     for l in pt.LANGS:
-        col, mark = LANG_STYLE[l]
+        col, mark, _ = LANG_STYLE[l]
+        hollow = not mark.endswith("*")
         comp, bf = [], []
         for m in pt.MODELS:
             for v in pt.VARIANTS:
                 if c.has(m, v, l):
                     p = c.point(c.key(m, v, l))
                     (bf if v == "bf16" else comp).append(f"({100 * p['acc_dis']:.2f},{100 * p['s_amb']:.2f})")
-        out.append(f"\\addplot[only marks, mark={mark}, mark size=1.6pt, {col}, fill opacity=0.75, draw opacity=0.9] "
-                   f"coordinates {{{' '.join(comp)}}};")
+        out.append(f"\\addplot[only marks, mark={mark}, mark size=1.6pt, {col}, line width=0.6pt, fill opacity=0.75, "
+                   f"draw opacity=0.9] coordinates {{{' '.join(comp)}}};")
         out.append(f"\\addlegendentry{{{LANG_TEX[l]}}}")
-        out.append(f"\\addplot[only marks, mark={mark}, mark size=3pt, fill={col}, draw=black, line width=0.6pt, "
+        fill = "white" if hollow else col
+        out.append(f"\\addplot[only marks, mark={mark.rstrip('*')}*, mark size=3pt, fill={fill}, draw=black, line width=0.6pt, "
                    f"forget plot] coordinates {{{' '.join(bf)}}};")
     out += [r"\end{axis}", r"\end{tikzpicture}"]
     return "\n".join(out)
