@@ -515,6 +515,20 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - remove Gemma AWQ from the grid;
   - Exp 2 students (on hold).
 
+### 26 Oct 2026: paper analysis, first pass
+
+- Plan: `docs/analysis_plan.md` (10 main tables + 3 appendix tables, metric definitions, CIs, tests). Script: `scripts/analysis/paper_tables.py`, which writes `results/analysis/tables.md`, `tables/*.csv` and caches answers in `answers.npz`; it runs in about 1 s once cached.
+- Bias targets built: `data/our_data/bias_targets.json` (6,046 auto, 361 reviewed, 25 excluded); the review sheets had no open rows. All 164 runs were downloaded from HF (1 GB).
+- Findings in `results/analysis/findings.md` (git-ignored, like all results). Headlines:
+  - (1) compression flips answers far above the noise floor; int8 flips 15–18% in ur/roman_ur;
+  - (2) Urdu flips more, but bias shifts less, and the extra flips are near-ties (86–90% of Urdu BF16 answers have confidence < 0.5, vs 43% in en; flip rates match within a confidence bin);
+  - (3) Δs_amb tracks Δ disambiguated accuracy (r = 0.83), so "less bias" mostly means a broken model, and bias rises where ability survives (Qwen NF4/Wanda 50%, Qalb AWQ);
+  - (4) Unknown-rate swings drive s_amb;
+  - (5) category shifts are uneven;
+  - (6) mixed calibration helps Urdu accuracy at 50% but barely changes bias;
+  - (7) Urdu letter labels cause position answering; `ur_abc` is cleaner.
+- Open: perplexity logs from the stopped machines; a per-model category table; the Alif wanda50mix roman_ur collapse; the main Urdu condition; Gemma's written "Unknown".
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
