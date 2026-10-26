@@ -7,3 +7,6 @@ credentials.json
 .venv/
 __pycache__/
 models/
+
+# LaTeX paper (synced with Overleaf; contains results, which never go into this public repo)
+paper/

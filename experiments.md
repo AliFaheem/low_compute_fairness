@@ -529,6 +529,17 @@ Running record of what was run, where, what came out, and what was decided. Meas
   - (7) Urdu letter labels cause position answering; `ur_abc` is cleaner.
 - Open: perplexity logs from the stopped machines; a per-model category table; the Alif wanda50mix roman_ur collapse; the main Urdu condition; Gemma's written "Unknown".
 
+### 26 Oct 2026: paper skeleton in the Overleaf project
+
+- Paper folder: `paper/bias_icse_responsible_ai/` (Springer LNCS, synced with Overleaf via the VS Code extension). It is now git-ignored: it holds results, and the GitHub repo is public.
+- `scripts/analysis/paper_latex.py` (run after `paper_tables.py`) writes into it:
+  - `tables/` (Table 1 benchmark, Table 2 compression, Table 3 calibration, the Figure 3 category heatmap, Figure 2's r);
+  - `figures/` (pgfplots code with the numbers embedded: Figure 1a bias churn, Figure 1b flips by confidence, Figure 2 scatter);
+  - `figdata/` (.dat);
+  - `results/` (all raw result CSVs + tables.md + findings.md).
+- `main.tex`: final tables and figures, with bullet points per section (no prose yet), and TODOs where decisions or checks are pending. `refs.bib`: 14 entries, the 2026 preprints marked VERIFY. Main document in Overleaf must be set to `main.tex`. Not compiled locally (no LaTeX installed).
+- The research questions were refined with the user (benchmark across languages; compression across languages; groups); see `docs/analysis_plan.md`.
+
 ### Pilot results so far (500 items each, BF16)
 
 | Run | Acc | Ambig | Disambig | Same answer in all 3 orders | Median label mass | rows/s |
