@@ -156,6 +156,65 @@ def table_calibration(c):
     return "\n".join(out)
 
 
+# Preparation time per model, measured from the queue logs (experiments.md): Wanda pruning 13 min (RTX 4080 Super)
+# to 21 min (RTX 3090); AWQ quantization incl. perplexity check about 19-21 min (RTX 3090 / 3090 Ti).
+PREP = {"bf16": "--", "int8": "on load", "nf4": "on load", "awq": "19--21 min", "wanda25": "13--21 min",
+        "wanda50": "13--21 min"}
+SETTING = {"bf16": "16-bit", "int8": "8-bit", "nf4": "4-bit", "awq": "4-bit", "wanda25": "25\\% sparse",
+           "wanda50": "50\\% sparse"}
+
+
+def run_meta(m, v, l):
+    import json
+    p = os.path.join(pt.common.RUNS_DIR, pt.run_key(m, v, l), "meta.json")
+    if not os.path.exists(p):
+        return None
+    meta = json.load(open(p))
+    ss = meta.get("sessions", [])
+    rows = sum(s.get("rows_after", 0) - s.get("rows_before", 0) for s in ss)
+    secs = sum(s.get("seconds", 0) for s in ss)
+    return {"gpu": meta.get("gpu"), "weights": meta.get("memory_footprint_gb"),
+            "peak": max([s.get("peak_gpu_memory_gb") or 0 for s in ss] or [0]), "speed": rows / secs if secs else None}
+
+
+def table_cost(c):
+    """What compression saves (memory, speed) next to what it costs (accuracy, newly stereotyped items).
+    Speed: prompts scored per second relative to the same model's BF16 run, only where both ran on the same GPU
+    model; mean over the four conditions and the models with such a pair."""
+    out = [r"\begin{tabular}{@{}llrrrlrrrr@{}}", r"\toprule",
+           r" & & \multicolumn{4}{c}{What it saves} & \multicolumn{4}{c}{What it costs} \\",
+           r"\cmidrule(lr){3-6}\cmidrule(l){7-10}",
+           r"Variant & Weights & Mem.\ (GB) & Peak (GB) & Speed & Prep.\ & $\Delta$Acc$_\text{dis}$ en & "
+           r"$\Delta$Acc$_\text{dis}$ ur & Into en & Into ur \\", r"\midrule"]
+    for v in ["bf16"] + MAIN_VARIANTS:
+        metas = [run_meta(m, v, "en") for m in pt.MODELS]
+        metas = [x for x in metas if x and x["weights"]]
+        w = np.mean([x["weights"] for x in metas])
+        peak = np.mean([x["peak"] for x in metas])
+        ratios = []
+        for m in pt.MODELS:
+            for l in pt.LANGS:
+                a, b = run_meta(m, v, l), run_meta(m, "bf16", l)
+                if a and b and a["speed"] and b["speed"] and a["gpu"] == b["gpu"]:
+                    ratios.append(a["speed"] / b["speed"])
+        speed = f"{np.mean(ratios):.2f}$\\times$" if ratios else "--"
+        if v == "bf16":
+            cost = ["--"] * 4
+        else:
+            cost = []
+            for l in ("en", "ur"):
+                ds = [c.delta(c.key(m, v, l), c.key(m, "bf16", l), "acc_dis")[0] for m in pt.MODELS if c.has(m, v, l)]
+                cost.append(num(float(np.mean(ds))))
+            for l in ("en", "ur"):
+                fl = [c.bias_flips(c.key(m, v, l), c.key(m, "bf16", l))[0] for m in pt.MODELS if c.has(m, v, l)]
+                cost.append(num(float(np.mean(fl))))
+        star = "$^\\ast$" if v == "awq" else ""
+        out.append(f"{VAR_TEX[v]}{star} & {SETTING[v]} & {w:.1f} & {peak:.1f} & {speed} & {PREP[v]} & "
+                   + " & ".join(cost) + r" \\")
+    out += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(out)
+
+
 def figdata(c, d):
     os.makedirs(d, exist_ok=True)
     # Figure 1a: into / out of the biased answer per variant and language; noise floor per language
@@ -234,7 +293,7 @@ def main():
     tex = open(main_tex, encoding="utf-8").read()
     # Figures are PDFs in fig/ (paper_figures.py); only the tables and Figure 2's r are spliced into main.tex.
     for name, fn in [("t1_benchmark", table_benchmark), ("t2_compression", table_compression),
-                     ("t3_calibration", table_calibration)]:
+                     ("t3_calibration", table_calibration), ("t0_cost", table_cost)]:
         tex = splice(tex, name, fn(c))
         print(f"  main.tex: {name}")
     r, n = figdata(c, os.path.join(pt.OUT, "figdata"))
